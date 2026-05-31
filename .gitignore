@@ -37,3 +37,5 @@ Thumbs.db
 *.swp
 *.swo
 
+# Other files to ignore
+data/

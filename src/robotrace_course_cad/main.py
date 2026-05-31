@@ -13,9 +13,10 @@ def main(argv: list[str] | None = None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
 
     app = QApplication(sys.argv[:1] + args)
-    model = load_course_model(args[0]) if args else default_course_model()
+    model_path = args[0] if args else None
+    model = load_course_model(model_path) if model_path else default_course_model()
 
-    window = MainWindow(model)
+    window = MainWindow(model, model_path=model_path)
     window.resize(1200, 760)
     window.show()
 

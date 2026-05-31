@@ -37,7 +37,7 @@ def load_course_model(path: str | Path) -> CourseModel:
 
 
 def save_course_model(model: CourseModel, path: str | Path) -> None:
-    Path(path).write_text(json.dumps(course_model_to_dict(model), ensure_ascii=False, indent=2), encoding="utf-8")
+    Path(path).write_text(json.dumps(course_model_to_dict(model), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
 def course_model_to_dict(model: CourseModel) -> dict[str, Any]:

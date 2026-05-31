@@ -1,16 +1,21 @@
 from __future__ import annotations
 
+from pathlib import Path
+
+from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QComboBox,
     QDoubleSpinBox,
+    QFileDialog,
     QFormLayout,
     QGraphicsScene,
     QHBoxLayout,
     QHeaderView,
     QLabel,
     QMainWindow,
+    QMessageBox,
     QPushButton,
     QTableWidget,
     QTableWidgetItem,
@@ -18,6 +23,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from robotrace_course_cad.io.json_io import load_course_model, save_course_model
 from robotrace_course_cad.model.course_model import CourseModel, HelperCircle, Turn
 from robotrace_course_cad.render.qt_renderer import render_course
 from robotrace_course_cad.solver.course_solver import solve_course
@@ -25,9 +31,10 @@ from robotrace_course_cad.ui.course_view import CourseView
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, model: CourseModel):
+    def __init__(self, model: CourseModel, model_path: str | None = None):
         super().__init__()
         self.model = model
+        self.model_path = Path(model_path) if model_path else None
         self.solution = solve_course(model)
         self._updating_table = False
 
@@ -42,6 +49,7 @@ class MainWindow(QMainWindow):
         self.issue_label.setWordWrap(True)
 
         self._build_ui()
+        self._build_menu()
         self._connect()
         self.refresh_all()
 
@@ -50,10 +58,12 @@ class MainWindow(QMainWindow):
         delete_button = QPushButton("Delete")
         up_button = QPushButton("Up")
         down_button = QPushButton("Down")
+        export_button = QPushButton("Export JSON...")
         self.add_button = add_button
         self.delete_button = delete_button
         self.up_button = up_button
         self.down_button = down_button
+        self.export_button = export_button
 
         self.table.setHorizontalHeaderLabels(["ID", "X cm", "Y cm", "R cm", "Turn"])
         self.table.verticalHeader().setVisible(False)
@@ -74,6 +84,7 @@ class MainWindow(QMainWindow):
         side.addWidget(QLabel("Helper Circles"))
         side.addWidget(self.table, 1)
         side.addLayout(controls)
+        side.addWidget(export_button)
         side.addSpacing(10)
         side.addWidget(QLabel("Start / Goal Hint"))
         side.addLayout(form)
@@ -93,11 +104,31 @@ class MainWindow(QMainWindow):
         central.setLayout(root)
         self.setCentralWidget(central)
 
+    def _build_menu(self) -> None:
+        file_menu = self.menuBar().addMenu("&File")
+
+        open_action = QAction("&Open JSON...", self)
+        open_action.setShortcut(QKeySequence.StandardKey.Open)
+        open_action.triggered.connect(self.open_json)
+        file_menu.addAction(open_action)
+        file_menu.addSeparator()
+
+        save_action = QAction("&Save JSON", self)
+        save_action.setShortcut(QKeySequence.StandardKey.Save)
+        save_action.triggered.connect(self.save_json)
+        file_menu.addAction(save_action)
+
+        save_as_action = QAction("Save JSON &As...", self)
+        save_as_action.setShortcut(QKeySequence.StandardKey.SaveAs)
+        save_as_action.triggered.connect(self.save_json_as)
+        file_menu.addAction(save_as_action)
+
     def _connect(self) -> None:
         self.add_button.clicked.connect(self.add_circle)
         self.delete_button.clicked.connect(self.delete_selected_circle)
         self.up_button.clicked.connect(lambda: self.move_selected_circle(-1))
         self.down_button.clicked.connect(lambda: self.move_selected_circle(1))
+        self.export_button.clicked.connect(self.save_json_as)
         self.table.cellChanged.connect(self.on_table_cell_changed)
         self.sg_x.valueChanged.connect(self.on_start_goal_changed)
         self.sg_y.valueChanged.connect(self.on_start_goal_changed)
@@ -132,6 +163,71 @@ class MainWindow(QMainWindow):
             self.issue_label.setText("No solver messages.")
             return
         self.issue_label.setText("\n".join(f"{issue.severity.upper()}: {issue.message}" for issue in self.solution.issues))
+
+    def open_json(self) -> None:
+        start_dir = str(self.model_path.parent) if self.model_path else ""
+        path, _selected_filter = QFileDialog.getOpenFileName(
+            self,
+            "Open Course JSON",
+            start_dir,
+            "JSON files (*.json);;All files (*)",
+        )
+        if not path:
+            return
+
+        try:
+            model = load_course_model(path)
+        except (OSError, ValueError, KeyError) as exc:
+            QMessageBox.critical(self, "Open Failed", f"Could not open JSON:\n{exc}")
+            return
+
+        self.model = model
+        self.model_path = Path(path)
+        self._sync_start_goal_controls()
+        self.refresh_all()
+        self.statusBar().showMessage(f"Opened JSON: {path}", 5000)
+
+    def save_json(self) -> None:
+        if self.model_path is None:
+            self.save_json_as()
+            return
+        self._write_json(self.model_path)
+
+    def save_json_as(self) -> None:
+        default_path = str(self.model_path) if self.model_path else "course.json"
+        path, _selected_filter = QFileDialog.getSaveFileName(
+            self,
+            "Export Course JSON",
+            default_path,
+            "JSON files (*.json);;All files (*)",
+        )
+        if not path:
+            return
+
+        export_path = Path(path)
+        if export_path.suffix == "":
+            export_path = export_path.with_suffix(".json")
+        self.model_path = export_path
+        self._write_json(export_path)
+
+    def _write_json(self, path: Path) -> None:
+        try:
+            save_course_model(self.model, path)
+        except OSError as exc:
+            QMessageBox.critical(self, "Export Failed", f"Could not write JSON:\n{exc}")
+            return
+        self.statusBar().showMessage(f"Saved JSON: {path}", 5000)
+
+    def _sync_start_goal_controls(self) -> None:
+        self.sg_x.blockSignals(True)
+        self.sg_y.blockSignals(True)
+        self.sg_length.blockSignals(True)
+        self.sg_x.setValue(self.model.start_goal_hint.x)
+        self.sg_y.setValue(self.model.start_goal_hint.y)
+        self.sg_length.setValue(self.model.start_goal_hint.length)
+        self.sg_x.blockSignals(False)
+        self.sg_y.blockSignals(False)
+        self.sg_length.blockSignals(False)
 
     def add_circle(self) -> None:
         if self.model.circles:
