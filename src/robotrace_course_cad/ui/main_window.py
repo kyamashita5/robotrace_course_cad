@@ -25,6 +25,7 @@ from PySide6.QtWidgets import (
 
 from robotrace_course_cad.io.json_io import load_course_model, save_course_model
 from robotrace_course_cad.model.course_model import CourseModel, HelperCircle, Turn
+from robotrace_course_cad.render.final_drawing_exporter import export_final_drawing
 from robotrace_course_cad.render.qt_renderer import render_course
 from robotrace_course_cad.solver.course_solver import solve_course
 from robotrace_course_cad.ui.course_view import CourseView
@@ -123,6 +124,11 @@ class MainWindow(QMainWindow):
         save_as_action.triggered.connect(self.save_json_as)
         file_menu.addAction(save_as_action)
 
+        file_menu.addSeparator()
+        export_drawing_action = QAction("Export &Drawing...", self)
+        export_drawing_action.triggered.connect(self.export_drawing)
+        file_menu.addAction(export_drawing_action)
+
     def _connect(self) -> None:
         self.add_button.clicked.connect(self.add_circle)
         self.delete_button.clicked.connect(self.delete_selected_circle)
@@ -217,6 +223,34 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Export Failed", f"Could not write JSON:\n{exc}")
             return
         self.statusBar().showMessage(f"Saved JSON: {path}", 5000)
+
+    def export_drawing(self) -> None:
+        default_path = self._default_drawing_export_path()
+        path, _selected_filter = QFileDialog.getSaveFileName(
+            self,
+            "Export Drawing",
+            str(default_path),
+            "SVG files (*.svg);;PDF files (*.pdf);;All files (*)",
+        )
+        if not path:
+            return
+
+        export_path = Path(path)
+        if export_path.suffix == "":
+            export_path = export_path.with_suffix(".svg")
+
+        try:
+            export_final_drawing(export_path, self.model, self.solution)
+        except (OSError, ValueError) as exc:
+            QMessageBox.critical(self, "Export Failed", f"Could not export drawing:\n{exc}")
+            return
+
+        self.statusBar().showMessage(f"Exported drawing: {export_path}", 5000)
+
+    def _default_drawing_export_path(self) -> Path:
+        if self.model_path is None:
+            return Path("course.svg")
+        return self.model_path.with_suffix(".svg")
 
     def _sync_start_goal_controls(self) -> None:
         self.sg_x.blockSignals(True)
