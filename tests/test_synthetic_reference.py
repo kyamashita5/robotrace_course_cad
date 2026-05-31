@@ -13,8 +13,9 @@ from robotrace_course_cad.solver.tangents import tangent_candidates_by_turn
 from robotrace_course_cad.model.course_model import HelperCircle
 
 try:
-    from robotrace_course_cad.render.qt_renderer import _qt_arc_angles, to_scene
+    from robotrace_course_cad.render.qt_renderer import _course_bounds_cm, _qt_arc_angles, to_scene
 except ImportError:
+    _course_bounds_cm = None
     _qt_arc_angles = None
     to_scene = None
 
@@ -90,6 +91,22 @@ class SyntheticReferenceTest(unittest.TestCase):
 
                     self.assertLess(scene_distance(start, expected_start), 1e-5, f"arc {index} Qt start")
                     self.assertLess(scene_distance(end, expected_end), 1e-5, f"arc {index} Qt end")
+
+    @unittest.skipIf(_course_bounds_cm is None, "PySide6 is not available")
+    def test_scene_bounds_cover_all_synthetic_courses(self) -> None:
+        assert _course_bounds_cm is not None
+
+        for example_path in sorted(SYNTHETIC_EXAMPLES.glob("*.json")):
+            with self.subTest(course=example_path.stem):
+                model = load_course_model(example_path)
+                solution = solve_course(model)
+                min_x, max_x, min_y, max_y = _course_bounds_cm(model, solution, margin_cm=0.0)
+
+                for circle in model.circles:
+                    self.assertLessEqual(min_x, circle.x - circle.r)
+                    self.assertGreaterEqual(max_x, circle.x + circle.r)
+                    self.assertLessEqual(min_y, circle.y - circle.r)
+                    self.assertGreaterEqual(max_y, circle.y + circle.r)
 
 
 def load_reference(course_name: str, kind: str):

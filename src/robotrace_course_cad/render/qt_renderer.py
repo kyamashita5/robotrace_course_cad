@@ -49,23 +49,87 @@ class HelperCircleItem(QGraphicsEllipseItem):
 
 def render_course(scene: QGraphicsScene, model: CourseModel, solution: CourseSolution, on_circle_changed) -> None:
     scene.clear()
-    scene.setSceneRect(QRectF(-2200, -1400, 4400, 2800))
-    _draw_grid(scene)
+    scene_rect = _course_scene_rect(model, solution)
+    scene.setSceneRect(scene_rect)
+    _draw_grid(scene, scene_rect)
     _draw_generated_line(scene, model, solution)
     _draw_helper_connections(scene, model)
     _draw_helper_circles(scene, model, on_circle_changed)
     _draw_start_goal_hint(scene, model)
 
 
-def _draw_grid(scene: QGraphicsScene) -> None:
+def _course_scene_rect(model: CourseModel, solution: CourseSolution, margin_cm: float = 80.0) -> QRectF:
+    min_x, max_x, min_y, max_y = _course_bounds_cm(model, solution, margin_cm)
+    return QRectF(
+        min_x * CM_TO_SCENE,
+        -max_y * CM_TO_SCENE,
+        (max_x - min_x) * CM_TO_SCENE,
+        (max_y - min_y) * CM_TO_SCENE,
+    )
+
+
+def _course_bounds_cm(model: CourseModel, solution: CourseSolution, margin_cm: float = 80.0) -> tuple[float, float, float, float]:
+    xs: list[float] = [model.start_goal_hint.x]
+    ys: list[float] = [model.start_goal_hint.y]
+
+    for circle in model.circles:
+        xs.extend([circle.x - circle.r, circle.x + circle.r])
+        ys.extend([circle.y - circle.r, circle.y + circle.r])
+
+    for tangent in solution.tangents:
+        if tangent is None:
+            continue
+        xs.extend([tangent.p_from.x, tangent.p_to.x])
+        ys.extend([tangent.p_from.y, tangent.p_to.y])
+
+    for arc in solution.arcs:
+        if arc is None:
+            continue
+        xs.extend([arc.center.x - arc.radius, arc.center.x + arc.radius, arc.p_start.x, arc.p_end.x])
+        ys.extend([arc.center.y - arc.radius, arc.center.y + arc.radius, arc.p_start.y, arc.p_end.y])
+
+    if not xs or not ys:
+        return -200.0, 200.0, -140.0, 140.0
+
+    min_x = min(xs) - margin_cm
+    max_x = max(xs) + margin_cm
+    min_y = min(ys) - margin_cm
+    max_y = max(ys) + margin_cm
+
+    min_x = math.floor(min_x / 10.0) * 10.0
+    max_x = math.ceil(max_x / 10.0) * 10.0
+    min_y = math.floor(min_y / 10.0) * 10.0
+    max_y = math.ceil(max_y / 10.0) * 10.0
+
+    if max_x - min_x < 200.0:
+        center_x = (min_x + max_x) / 2.0
+        min_x = center_x - 100.0
+        max_x = center_x + 100.0
+    if max_y - min_y < 160.0:
+        center_y = (min_y + max_y) / 2.0
+        min_y = center_y - 80.0
+        max_y = center_y + 80.0
+
+    return min_x, max_x, min_y, max_y
+
+
+def _draw_grid(scene: QGraphicsScene, scene_rect: QRectF) -> None:
     light = QPen(QColor("#eceff3"), 0)
     axis = QPen(QColor("#c8ced8"), 0)
-    for cm in range(-200, 201, 10):
-        pen = axis if cm == 0 else light
-        x = cm * CM_TO_SCENE
-        y = cm * CM_TO_SCENE
-        scene.addLine(x, -1400, x, 1400, pen)
-        scene.addLine(-2200, y, 2200, y, pen)
+    min_x_cm = math.floor(scene_rect.left() / CM_TO_SCENE / 10.0) * 10
+    max_x_cm = math.ceil(scene_rect.right() / CM_TO_SCENE / 10.0) * 10
+    min_y_cm = math.floor((-scene_rect.bottom()) / CM_TO_SCENE / 10.0) * 10
+    max_y_cm = math.ceil((-scene_rect.top()) / CM_TO_SCENE / 10.0) * 10
+
+    for x_cm in range(int(min_x_cm), int(max_x_cm) + 1, 10):
+        pen = axis if x_cm == 0 else light
+        x = x_cm * CM_TO_SCENE
+        scene.addLine(x, scene_rect.top(), x, scene_rect.bottom(), pen)
+
+    for y_cm in range(int(min_y_cm), int(max_y_cm) + 1, 10):
+        pen = axis if y_cm == 0 else light
+        y = -y_cm * CM_TO_SCENE
+        scene.addLine(scene_rect.left(), y, scene_rect.right(), y, pen)
 
 
 def _draw_generated_line(scene: QGraphicsScene, model: CourseModel, solution: CourseSolution) -> None:
