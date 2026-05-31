@@ -3,11 +3,11 @@ from __future__ import annotations
 import math
 
 from PySide6.QtCore import QPointF, QRectF, Qt
-from PySide6.QtGui import QBrush, QColor, QFont, QPainterPath, QPen
+from PySide6.QtGui import QBrush, QColor, QFont, QPainterPath, QPen, QPolygonF
 from PySide6.QtWidgets import QGraphicsEllipseItem, QGraphicsItem, QGraphicsPathItem, QGraphicsScene, QGraphicsSimpleTextItem
 
 from robotrace_course_cad.model.course_model import CourseModel, HelperCircle, Turn
-from robotrace_course_cad.model.course_solution import ArcSegment, CourseSolution
+from robotrace_course_cad.model.course_solution import ArcSegment, CornerMarker, CourseSolution, StartGoalMarker
 from robotrace_course_cad.model.geometry import Vec2
 
 CM_TO_SCENE = 10.0
@@ -53,6 +53,8 @@ def render_course(scene: QGraphicsScene, model: CourseModel, solution: CourseSol
     scene.setSceneRect(scene_rect)
     _draw_grid(scene, scene_rect)
     _draw_generated_line(scene, model, solution)
+    _draw_corner_markers(scene, solution)
+    _draw_start_goal_markers(scene, solution)
     _draw_helper_connections(scene, model)
     _draw_helper_circles(scene, model, on_circle_changed)
     _draw_start_goal_hint(scene, model)
@@ -87,6 +89,19 @@ def _course_bounds_cm(model: CourseModel, solution: CourseSolution, margin_cm: f
             continue
         xs.extend([arc.center.x - arc.radius, arc.center.x + arc.radius, arc.p_start.x, arc.p_end.x])
         ys.extend([arc.center.y - arc.radius, arc.center.y + arc.radius, arc.p_start.y, arc.p_end.y])
+
+    for marker in solution.corner_markers:
+        xs.extend([marker.center.x - marker.long_side_cm, marker.center.x + marker.long_side_cm])
+        ys.extend([marker.center.y - marker.long_side_cm, marker.center.y + marker.long_side_cm])
+
+    if solution.start_goal_segment is not None:
+        segment = solution.start_goal_segment
+        xs.extend([segment.p_start.x, segment.p_end.x, segment.center.x])
+        ys.extend([segment.p_start.y, segment.p_end.y, segment.center.y])
+
+    for marker in solution.start_goal_markers:
+        xs.extend([marker.center.x - marker.long_side_cm, marker.center.x + marker.long_side_cm])
+        ys.extend([marker.center.y - marker.long_side_cm, marker.center.y + marker.long_side_cm])
 
     if not xs or not ys:
         return -200.0, 200.0, -140.0, 140.0
@@ -182,6 +197,81 @@ def _qt_arc_angles(arc: ArcSegment) -> tuple[float, float]:
     if arc.turn == Turn.CW:
         sweep = -sweep
     return start_angle, sweep
+
+
+def _draw_corner_markers(scene: QGraphicsScene, solution: CourseSolution) -> None:
+    pen = QPen(QColor("#d0472f"), 1.2)
+    brush = QBrush(QColor(208, 71, 47, 105))
+
+    for marker in solution.corner_markers:
+        item = scene.addPolygon(_marker_polygon(marker), pen, brush)
+        item.setZValue(26)
+        item.setToolTip(
+            "Corner marker "
+            f"{marker.boundary_index}: center=({marker.center.x:.2f}, {marker.center.y:.2f}) cm, "
+            f"tangent angle={marker.tangent_angle_deg:.1f} deg"
+        )
+
+        label_pos = to_scene(marker.center)
+        label = QGraphicsSimpleTextItem(f"M{marker.boundary_index}")
+        label.setBrush(QBrush(QColor("#a83224")))
+        label.setFont(QFont("Arial", 8))
+        label.setPos(label_pos.x() + 5, label_pos.y() + 5)
+        label.setZValue(27)
+        scene.addItem(label)
+
+
+def _draw_start_goal_markers(scene: QGraphicsScene, solution: CourseSolution) -> None:
+    if solution.start_goal_segment is not None:
+        segment = solution.start_goal_segment
+        pen = QPen(QColor("#228a63"), 1.6)
+        pen.setStyle(Qt.PenStyle.DashLine)
+        a = to_scene(segment.p_start)
+        b = to_scene(segment.p_end)
+        item = scene.addLine(a.x(), a.y(), b.x(), b.y(), pen)
+        item.setZValue(24)
+        item.setToolTip(
+            "Start/Goal segment: "
+            f"center=({segment.center.x:.2f}, {segment.center.y:.2f}) cm, "
+            f"length={segment.length:.1f} cm"
+        )
+
+    pen = QPen(QColor("#16835b"), 1.3)
+    brush = QBrush(QColor(22, 131, 91, 125))
+
+    for marker in solution.start_goal_markers:
+        item = scene.addPolygon(_marker_polygon(marker), pen, brush)
+        item.setZValue(28)
+        item.setToolTip(
+            "Start/Goal marker "
+            f"{marker.marker_index}: center=({marker.center.x:.2f}, {marker.center.y:.2f}) cm, "
+            f"tangent angle={marker.tangent_angle_deg:.1f} deg"
+        )
+
+        label_pos = to_scene(marker.center)
+        label = QGraphicsSimpleTextItem(f"SG{marker.marker_index}")
+        label.setBrush(QBrush(QColor("#0d6b49")))
+        label.setFont(QFont("Arial", 8))
+        label.setPos(label_pos.x() + 5, label_pos.y() + 5)
+        label.setZValue(29)
+        scene.addItem(label)
+
+
+def _marker_polygon(marker: CornerMarker) -> QPolygonF:
+    tangent_angle = math.radians(marker.tangent_angle_deg)
+    normal_angle = math.radians(marker.normal_angle_deg)
+    tangent = Vec2(math.cos(tangent_angle), math.sin(tangent_angle))
+    normal = Vec2(math.cos(normal_angle), math.sin(normal_angle))
+    half_short = marker.short_side_cm / 2.0
+    half_long = marker.long_side_cm / 2.0
+
+    points = [
+        marker.center - normal * half_long - tangent * half_short,
+        marker.center + normal * half_long - tangent * half_short,
+        marker.center + normal * half_long + tangent * half_short,
+        marker.center - normal * half_long + tangent * half_short,
+    ]
+    return QPolygonF([to_scene(point) for point in points])
 
 
 def _draw_helper_connections(scene: QGraphicsScene, model: CourseModel) -> None:

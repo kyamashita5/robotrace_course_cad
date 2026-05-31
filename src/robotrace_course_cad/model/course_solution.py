@@ -33,6 +33,37 @@ class ArcSegment:
 
 
 @dataclass(frozen=True)
+class CornerMarker:
+    boundary_index: int
+    point: Vec2
+    center: Vec2
+    tangent_angle_deg: float
+    normal_angle_deg: float
+    long_side_cm: float = 4.0
+    short_side_cm: float = 1.9
+
+
+@dataclass(frozen=True)
+class StartGoalSegment:
+    center: Vec2
+    p_start: Vec2
+    p_end: Vec2
+    tangent_angle_deg: float
+    length: float
+
+
+@dataclass(frozen=True)
+class StartGoalMarker:
+    marker_index: int
+    point: Vec2
+    center: Vec2
+    tangent_angle_deg: float
+    normal_angle_deg: float
+    long_side_cm: float = 4.0
+    short_side_cm: float = 1.9
+
+
+@dataclass(frozen=True)
 class ValidationIssue:
     severity: str
     message: str
@@ -45,3 +76,6 @@ class CourseSolution:
     tangents: list[TangentSegment | None]
     arcs: list[ArcSegment | None]
     issues: list[ValidationIssue]
+    corner_markers: list[CornerMarker] = field(default_factory=list)
+    start_goal_segment: StartGoalSegment | None = None
+    start_goal_markers: list[StartGoalMarker] = field(default_factory=list)
