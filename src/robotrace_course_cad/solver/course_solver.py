@@ -3,7 +3,10 @@ from __future__ import annotations
 from robotrace_course_cad.model.course_model import CourseModel, HelperCircle
 from robotrace_course_cad.model.course_solution import CourseSolution, TangentSegment, ValidationIssue
 from robotrace_course_cad.solver.arcs import MIN_SEGMENT_LENGTH_CM, arc_angle_for_turn, generate_arcs
+from robotrace_course_cad.solver.intersections import validate_intersections
 from robotrace_course_cad.solver.tangents import choose_tangent_closest_to_point, oriented_tangent_candidates_by_turn
+
+ZERO_LENGTH_TANGENT_EPSILON_CM = 1e-3
 
 
 def solve_course(model: CourseModel) -> CourseSolution:
@@ -59,7 +62,7 @@ def solve_course(model: CourseModel) -> CourseSolution:
         prev_tangent = selected
 
     for i, tangent in enumerate(tangents):
-        if tangent is not None and tangent.length <= MIN_SEGMENT_LENGTH_CM:
+        if tangent is not None and ZERO_LENGTH_TANGENT_EPSILON_CM < tangent.length <= MIN_SEGMENT_LENGTH_CM:
             issues.append(
                 ValidationIssue(
                     severity="warning",
@@ -71,7 +74,9 @@ def solve_course(model: CourseModel) -> CourseSolution:
 
     arcs, arc_issues = generate_arcs(circles, tangents)
     issues.extend(arc_issues)
-    return CourseSolution(tangents=tangents, arcs=arcs, issues=issues)
+    solution = CourseSolution(tangents=tangents, arcs=arcs, issues=issues)
+    issues.extend(validate_intersections(solution))
+    return solution
 
 
 def choose_candidate_consistent_with_previous(
