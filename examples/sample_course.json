@@ -1,0 +1,20 @@
+{
+  "board": {
+    "width_cm": 360,
+    "height_cm": 180
+  },
+  "line_width_cm": 1.9,
+  "min_edge_margin_cm": 20.0,
+  "radius_presets_cm": [10, 15, 20, 25, 30, 40, 50],
+  "start_goal_hint": {
+    "x": -25,
+    "y": -55,
+    "length": 100
+  },
+  "circles": [
+    {"id": 0, "x": -60, "y": 0, "r": 25, "turn": "ccw"},
+    {"id": 1, "x": 20, "y": 45, "r": 20, "turn": "cw"},
+    {"id": 2, "x": 85, "y": -10, "r": 30, "turn": "ccw"},
+    {"id": 3, "x": 10, "y": -55, "r": 20, "turn": "cw"}
+  ]
+}
