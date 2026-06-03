@@ -13,6 +13,10 @@ class JsonIoTest(unittest.TestCase):
         model = default_course_model()
         model.board_width_cm = 420.0
         model.board_height_cm = 210.0
+        model.board_grid.origin_x = -45.0
+        model.board_grid.origin_y = -30.0
+        model.board_grid.cell_width = 120.0
+        model.board_grid.cell_height = 90.0
         model.start_goal_hint = StartGoalHint(12.5, -34.5, 90.0)
         model.circles.append(HelperCircle(99, 1.25, 2.5, 15.0, Turn.CW, locked=True))
 
@@ -23,6 +27,10 @@ class JsonIoTest(unittest.TestCase):
 
         self.assertEqual(loaded.board_width_cm, 420.0)
         self.assertEqual(loaded.board_height_cm, 210.0)
+        self.assertEqual(loaded.board_grid.origin_x, -45.0)
+        self.assertEqual(loaded.board_grid.origin_y, -30.0)
+        self.assertEqual(loaded.board_grid.cell_width, 120.0)
+        self.assertEqual(loaded.board_grid.cell_height, 90.0)
         self.assertEqual(loaded.start_goal_hint.x, 12.5)
         self.assertEqual(loaded.start_goal_hint.y, -34.5)
         self.assertEqual(loaded.start_goal_hint.length, 90.0)

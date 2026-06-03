@@ -10,7 +10,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PySide6.QtWidgets import QApplication
 
 from robotrace_course_cad.io.json_io import load_course_model
-from robotrace_course_cad.render.final_drawing_exporter import export_final_drawing
+from robotrace_course_cad.render.final_drawing_exporter import export_final_drawing, occupied_grid_cells
 from robotrace_course_cad.solver.course_solver import solve_course
 
 
@@ -32,6 +32,19 @@ class FinalDrawingExporterTest(unittest.TestCase):
 
             self.assertGreater(svg_path.stat().st_size, 100)
             self.assertGreater(pdf_path.stat().st_size, 100)
+
+    def test_detects_occupied_grid_cells(self) -> None:
+        model = load_course_model("examples/sample_course.json")
+        model.board_grid.origin_x = 0.0
+        model.board_grid.origin_y = 0.0
+        model.board_grid.cell_width = 90.0
+        model.board_grid.cell_height = 90.0
+        solution = solve_course(model)
+
+        cells = occupied_grid_cells(model, solution)
+
+        self.assertGreater(len(cells), 0)
+        self.assertTrue(all(isinstance(cell[0], int) and isinstance(cell[1], int) for cell in cells))
 
     def test_rejects_unknown_extension(self) -> None:
         model = load_course_model("examples/sample_course.json")

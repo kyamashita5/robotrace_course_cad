@@ -46,6 +46,10 @@ class MainWindow(QMainWindow):
         self.sg_x = _spin(-10000, 10000, self.model.start_goal_hint.x)
         self.sg_y = _spin(-10000, 10000, self.model.start_goal_hint.y)
         self.sg_length = _spin(1, 10000, self.model.start_goal_hint.length)
+        self.grid_origin_x = _spin(-10000, 10000, self.model.board_grid.origin_x)
+        self.grid_origin_y = _spin(-10000, 10000, self.model.board_grid.origin_y)
+        self.grid_cell_width = _spin(0.1, 10000, self.model.board_grid.cell_width)
+        self.grid_cell_height = _spin(0.1, 10000, self.model.board_grid.cell_height)
         self.issue_label = QLabel()
         self.issue_label.setWordWrap(True)
 
@@ -81,6 +85,12 @@ class MainWindow(QMainWindow):
         form.addRow("SG Y cm", self.sg_y)
         form.addRow("SG length cm", self.sg_length)
 
+        grid_form = QFormLayout()
+        grid_form.addRow("Origin X cm", self.grid_origin_x)
+        grid_form.addRow("Origin Y cm", self.grid_origin_y)
+        grid_form.addRow("Cell W cm", self.grid_cell_width)
+        grid_form.addRow("Cell H cm", self.grid_cell_height)
+
         side = QVBoxLayout()
         side.addWidget(QLabel("Helper Circles"))
         side.addWidget(self.table, 1)
@@ -89,6 +99,9 @@ class MainWindow(QMainWindow):
         side.addSpacing(10)
         side.addWidget(QLabel("Start / Goal Hint"))
         side.addLayout(form)
+        side.addSpacing(10)
+        side.addWidget(QLabel("Board Grid"))
+        side.addLayout(grid_form)
         side.addSpacing(10)
         side.addWidget(QLabel("Solver Messages"))
         side.addWidget(self.issue_label)
@@ -139,6 +152,10 @@ class MainWindow(QMainWindow):
         self.sg_x.valueChanged.connect(self.on_start_goal_changed)
         self.sg_y.valueChanged.connect(self.on_start_goal_changed)
         self.sg_length.valueChanged.connect(self.on_start_goal_changed)
+        self.grid_origin_x.valueChanged.connect(self.on_grid_changed)
+        self.grid_origin_y.valueChanged.connect(self.on_grid_changed)
+        self.grid_cell_width.valueChanged.connect(self.on_grid_changed)
+        self.grid_cell_height.valueChanged.connect(self.on_grid_changed)
 
     def refresh_all(self) -> None:
         self.solution = solve_course(self.model)
@@ -190,6 +207,7 @@ class MainWindow(QMainWindow):
         self.model = model
         self.model_path = Path(path)
         self._sync_start_goal_controls()
+        self._sync_grid_controls()
         self.refresh_all()
         self.statusBar().showMessage(f"Opened JSON: {path}", 5000)
 
@@ -263,6 +281,20 @@ class MainWindow(QMainWindow):
         self.sg_y.blockSignals(False)
         self.sg_length.blockSignals(False)
 
+    def _sync_grid_controls(self) -> None:
+        self.grid_origin_x.blockSignals(True)
+        self.grid_origin_y.blockSignals(True)
+        self.grid_cell_width.blockSignals(True)
+        self.grid_cell_height.blockSignals(True)
+        self.grid_origin_x.setValue(self.model.board_grid.origin_x)
+        self.grid_origin_y.setValue(self.model.board_grid.origin_y)
+        self.grid_cell_width.setValue(self.model.board_grid.cell_width)
+        self.grid_cell_height.setValue(self.model.board_grid.cell_height)
+        self.grid_origin_x.blockSignals(False)
+        self.grid_origin_y.blockSignals(False)
+        self.grid_cell_width.blockSignals(False)
+        self.grid_cell_height.blockSignals(False)
+
     def add_circle(self) -> None:
         if self.model.circles:
             last = self.model.circles[-1]
@@ -327,6 +359,13 @@ class MainWindow(QMainWindow):
         self.solution = solve_course(self.model)
         self.refresh_scene()
         self.refresh_issues()
+
+    def on_grid_changed(self) -> None:
+        self.model.board_grid.origin_x = self.grid_origin_x.value()
+        self.model.board_grid.origin_y = self.grid_origin_y.value()
+        self.model.board_grid.cell_width = self.grid_cell_width.value()
+        self.model.board_grid.cell_height = self.grid_cell_height.value()
+        self.refresh_scene()
 
     def on_circle_dragged(self, circle: HelperCircle) -> None:
         self.solution = solve_course(self.model)

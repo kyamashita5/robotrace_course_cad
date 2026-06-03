@@ -5,6 +5,12 @@
   },
   "line_width_cm": 1.9,
   "min_edge_margin_cm": 20.0,
+  "grid": {
+    "origin_x_cm": 0.0,
+    "origin_y_cm": 0.0,
+    "cell_width_cm": 90.0,
+    "cell_height_cm": 90.0
+  },
   "radius_presets_cm": [
     10,
     15,

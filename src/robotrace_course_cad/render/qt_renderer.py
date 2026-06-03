@@ -52,6 +52,7 @@ def render_course(scene: QGraphicsScene, model: CourseModel, solution: CourseSol
     scene_rect = _course_scene_rect(model, solution)
     scene.setSceneRect(scene_rect)
     _draw_grid(scene, scene_rect)
+    _draw_board_grid(scene, model, scene_rect)
     _draw_generated_line(scene, model, solution)
     _draw_corner_markers(scene, solution)
     _draw_start_goal_markers(scene, solution)
@@ -145,6 +146,37 @@ def _draw_grid(scene: QGraphicsScene, scene_rect: QRectF) -> None:
         pen = axis if y_cm == 0 else light
         y = -y_cm * CM_TO_SCENE
         scene.addLine(scene_rect.left(), y, scene_rect.right(), y, pen)
+
+
+def _draw_board_grid(scene: QGraphicsScene, model: CourseModel, scene_rect: QRectF) -> None:
+    grid = model.board_grid
+    if not grid.enabled:
+        return
+
+    pen = QPen(QColor("#8ca6c8"), 1.1)
+    origin_pen = QPen(QColor("#5f7fa8"), 1.4)
+
+    min_x_cm = scene_rect.left() / CM_TO_SCENE
+    max_x_cm = scene_rect.right() / CM_TO_SCENE
+    min_y_cm = -scene_rect.bottom() / CM_TO_SCENE
+    max_y_cm = -scene_rect.top() / CM_TO_SCENE
+
+    first_x_index = math.floor((min_x_cm - grid.origin_x) / grid.cell_width)
+    last_x_index = math.ceil((max_x_cm - grid.origin_x) / grid.cell_width)
+    first_y_index = math.floor((min_y_cm - grid.origin_y) / grid.cell_height)
+    last_y_index = math.ceil((max_y_cm - grid.origin_y) / grid.cell_height)
+
+    for index in range(first_x_index, last_x_index + 1):
+        x_cm = grid.origin_x + index * grid.cell_width
+        x = x_cm * CM_TO_SCENE
+        item = scene.addLine(x, scene_rect.top(), x, scene_rect.bottom(), origin_pen if index == 0 else pen)
+        item.setZValue(2)
+
+    for index in range(first_y_index, last_y_index + 1):
+        y_cm = grid.origin_y + index * grid.cell_height
+        y = -y_cm * CM_TO_SCENE
+        item = scene.addLine(scene_rect.left(), y, scene_rect.right(), y, origin_pen if index == 0 else pen)
+        item.setZValue(2)
 
 
 def _draw_generated_line(scene: QGraphicsScene, model: CourseModel, solution: CourseSolution) -> None:

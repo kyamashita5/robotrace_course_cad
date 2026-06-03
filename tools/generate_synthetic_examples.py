@@ -161,6 +161,12 @@ def build_reference_course(blocks: list[tuple[float, float]]):
         },
         "line_width_cm": 1.9,
         "min_edge_margin_cm": 20.0,
+        "grid": {
+            "origin_x_cm": 0.0,
+            "origin_y_cm": 0.0,
+            "cell_width_cm": 90.0,
+            "cell_height_cm": 90.0,
+        },
         "radius_presets_cm": [10, 15, 20, 25, 30, 40, 50, 70, 90, 120, 160, 180, 220, 300],
         "start_goal_hint": {
             "x": round_float(sg_center.x),
