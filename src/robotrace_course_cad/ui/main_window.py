@@ -71,7 +71,7 @@ class MainWindow(QMainWindow):
         fit_touch_button = QPushButton("Fit Touch")
         fit_prev_button = QPushButton("Fit Prev")
         fit_next_button = QPushButton("Fit Next")
-        export_button = QPushButton("Export JSON...")
+        export_button = QPushButton("Export SVG/PDF...")
         self.add_button = add_button
         self.delete_button = delete_button
         self.up_button = up_button
@@ -166,8 +166,9 @@ class MainWindow(QMainWindow):
         self.fit_touch_button.clicked.connect(self.fit_selected_circle_to_neighbors)
         self.fit_prev_button.clicked.connect(self.fit_selected_circle_to_previous)
         self.fit_next_button.clicked.connect(self.fit_selected_circle_to_next)
-        self.export_button.clicked.connect(self.save_json_as)
+        self.export_button.clicked.connect(self.export_drawing)
         self.table.cellChanged.connect(self.on_table_cell_changed)
+        self.table.itemSelectionChanged.connect(self.on_circle_selection_changed)
         self.sg_x.valueChanged.connect(self.on_start_goal_changed)
         self.sg_y.valueChanged.connect(self.on_start_goal_changed)
         self.sg_length.valueChanged.connect(self.on_start_goal_changed)
@@ -183,7 +184,17 @@ class MainWindow(QMainWindow):
         self.refresh_issues()
 
     def refresh_scene(self) -> None:
-        render_course(self.scene, self.model, self.solution, self.on_circle_dragged)
+        selected_circle_id = None
+        selected_row = self.table.currentRow()
+        if 0 <= selected_row < len(self.model.circles):
+            selected_circle_id = self.model.circles[selected_row].id
+        render_course(
+            self.scene,
+            self.model,
+            self.solution,
+            self.on_circle_dragged,
+            selected_circle_id=selected_circle_id,
+        )
 
     def populate_table(self) -> None:
         self._updating_table = True
@@ -315,24 +326,33 @@ class MainWindow(QMainWindow):
         self.grid_cell_height.blockSignals(False)
 
     def add_circle(self) -> None:
+        selected_row = self.table.currentRow()
         if self.model.circles:
-            last = self.model.circles[-1]
-            x = last.x + 40.0
-            y = last.y
-            r = last.r
-            turn = Turn.CCW if last.turn == Turn.CW else Turn.CW
+            if 0 <= selected_row < len(self.model.circles):
+                insert_index = selected_row + 1
+                base = self.model.circles[selected_row]
+            else:
+                insert_index = len(self.model.circles)
+                base = self.model.circles[-1]
+            x = base.x + 40.0
+            y = base.y
+            r = base.r
+            turn = Turn.CCW if base.turn == Turn.CW else Turn.CW
         else:
+            insert_index = 0
             x = y = 0.0
             r = self.model.radius_presets_cm[0] if self.model.radius_presets_cm else 20.0
             turn = Turn.CCW
-        self.model.circles.append(HelperCircle(self.model.next_circle_id(), x, y, r, turn))
+        self.model.circles.insert(insert_index, HelperCircle(insert_index, x, y, r, turn))
+        self.model.renumber_circle_ids()
         self.refresh_all()
-        self.table.selectRow(len(self.model.circles) - 1)
+        self.table.selectRow(insert_index)
 
     def delete_selected_circle(self) -> None:
         row = self.table.currentRow()
         if 0 <= row < len(self.model.circles):
             del self.model.circles[row]
+            self.model.renumber_circle_ids()
             self.refresh_all()
             self.table.selectRow(min(row, len(self.model.circles) - 1))
 
@@ -341,6 +361,7 @@ class MainWindow(QMainWindow):
         new_row = row + delta
         if 0 <= row < len(self.model.circles) and 0 <= new_row < len(self.model.circles):
             self.model.circles[row], self.model.circles[new_row] = self.model.circles[new_row], self.model.circles[row]
+            self.model.renumber_circle_ids()
             self.refresh_all()
             self.table.selectRow(new_row)
 
@@ -419,6 +440,10 @@ class MainWindow(QMainWindow):
         self.model.board_grid.cell_width = self.grid_cell_width.value()
         self.model.board_grid.cell_height = self.grid_cell_height.value()
         self.refresh_scene()
+
+    def on_circle_selection_changed(self) -> None:
+        if not self._updating_table:
+            self.refresh_scene()
 
     def on_circle_dragged(self, circle: HelperCircle) -> None:
         self.solution = solve_course(self.model)

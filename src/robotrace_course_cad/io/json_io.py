@@ -12,7 +12,7 @@ def load_course_model(path: str | Path) -> CourseModel:
     board = data.get("board", {})
     grid = data.get("grid", data.get("board_grid", {}))
     hint = data.get("start_goal_hint") or {}
-    return CourseModel(
+    model = CourseModel(
         board_width_cm=float(board.get("width_cm", data.get("board_width_cm", 360.0))),
         board_height_cm=float(board.get("height_cm", data.get("board_height_cm", 180.0))),
         line_width_cm=float(data.get("line_width_cm", 1.9)),
@@ -41,9 +41,12 @@ def load_course_model(path: str | Path) -> CourseModel:
             for index, raw in enumerate(data.get("circles", []))
         ],
     )
+    model.renumber_circle_ids()
+    return model
 
 
 def save_course_model(model: CourseModel, path: str | Path) -> None:
+    model.renumber_circle_ids()
     Path(path).write_text(json.dumps(course_model_to_dict(model), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 

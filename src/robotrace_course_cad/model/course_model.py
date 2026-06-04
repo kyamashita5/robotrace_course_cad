@@ -70,12 +70,12 @@ class CourseModel:
     start_goal_hint: StartGoalHint = field(default_factory=lambda: StartGoalHint(30.0, -45.0))
     board_grid: BoardGrid = field(default_factory=BoardGrid)
 
+    def renumber_circle_ids(self) -> None:
+        for index, circle in enumerate(self.circles):
+            circle.id = index
+
     def next_circle_id(self) -> int:
-        used_ids = {circle.id for circle in self.circles}
-        next_id = 0
-        while next_id in used_ids:
-            next_id += 1
-        return next_id
+        return len(self.circles)
 
 
 def default_course_model() -> CourseModel:

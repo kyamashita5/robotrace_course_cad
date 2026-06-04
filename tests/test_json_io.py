@@ -35,7 +35,7 @@ class JsonIoTest(unittest.TestCase):
         self.assertEqual(loaded.start_goal_hint.y, -34.5)
         self.assertEqual(loaded.start_goal_hint.length, 90.0)
         self.assertEqual(len(loaded.circles), len(model.circles))
-        self.assertEqual(loaded.circles[-1].id, 99)
+        self.assertEqual([circle.id for circle in loaded.circles], list(range(len(loaded.circles))))
         self.assertEqual(loaded.circles[-1].turn, Turn.CW)
         self.assertTrue(loaded.circles[-1].locked)
 
