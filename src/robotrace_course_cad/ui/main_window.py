@@ -27,7 +27,11 @@ from robotrace_course_cad.io.json_io import load_course_model, save_course_model
 from robotrace_course_cad.model.course_model import CourseModel, HelperCircle, Turn
 from robotrace_course_cad.render.final_drawing_exporter import export_final_drawing
 from robotrace_course_cad.render.qt_renderer import render_course
-from robotrace_course_cad.solver.circle_adjust import adjusted_center_touching_neighbors
+from robotrace_course_cad.solver.circle_adjust import (
+    adjusted_center_touching_neighbors,
+    adjusted_center_touching_next,
+    adjusted_center_touching_previous,
+)
 from robotrace_course_cad.solver.course_solver import solve_course
 from robotrace_course_cad.ui.course_view import CourseView
 
@@ -65,12 +69,16 @@ class MainWindow(QMainWindow):
         up_button = QPushButton("Up")
         down_button = QPushButton("Down")
         fit_touch_button = QPushButton("Fit Touch")
+        fit_prev_button = QPushButton("Fit Prev")
+        fit_next_button = QPushButton("Fit Next")
         export_button = QPushButton("Export JSON...")
         self.add_button = add_button
         self.delete_button = delete_button
         self.up_button = up_button
         self.down_button = down_button
         self.fit_touch_button = fit_touch_button
+        self.fit_prev_button = fit_prev_button
+        self.fit_next_button = fit_next_button
         self.export_button = export_button
 
         self.table.setHorizontalHeaderLabels(["ID", "X cm", "Y cm", "R cm", "Turn"])
@@ -99,6 +107,10 @@ class MainWindow(QMainWindow):
         side.addWidget(self.table, 1)
         side.addLayout(controls)
         side.addWidget(fit_touch_button)
+        fit_one_side_controls = QHBoxLayout()
+        fit_one_side_controls.addWidget(fit_prev_button)
+        fit_one_side_controls.addWidget(fit_next_button)
+        side.addLayout(fit_one_side_controls)
         side.addWidget(export_button)
         side.addSpacing(10)
         side.addWidget(QLabel("Start / Goal Hint"))
@@ -152,6 +164,8 @@ class MainWindow(QMainWindow):
         self.up_button.clicked.connect(lambda: self.move_selected_circle(-1))
         self.down_button.clicked.connect(lambda: self.move_selected_circle(1))
         self.fit_touch_button.clicked.connect(self.fit_selected_circle_to_neighbors)
+        self.fit_prev_button.clicked.connect(self.fit_selected_circle_to_previous)
+        self.fit_next_button.clicked.connect(self.fit_selected_circle_to_next)
         self.export_button.clicked.connect(self.save_json_as)
         self.table.cellChanged.connect(self.on_table_cell_changed)
         self.sg_x.valueChanged.connect(self.on_start_goal_changed)
@@ -343,6 +357,26 @@ class MainWindow(QMainWindow):
         self.refresh_all()
         self.table.selectRow(row)
         self.statusBar().showMessage(f"Moved circle {circle.id} to touch neighbors", 5000)
+
+    def fit_selected_circle_to_previous(self) -> None:
+        self._fit_selected_circle_to_one_neighbor(adjusted_center_touching_previous, "previous")
+
+    def fit_selected_circle_to_next(self) -> None:
+        self._fit_selected_circle_to_one_neighbor(adjusted_center_touching_next, "next")
+
+    def _fit_selected_circle_to_one_neighbor(self, adjust_func, neighbor_label: str) -> None:
+        row = self.table.currentRow()
+        new_center = adjust_func(self.model.circles, row)
+        if new_center is None:
+            self.statusBar().showMessage(f"No touching-center solution for {neighbor_label} circle", 5000)
+            return
+
+        circle = self.model.circles[row]
+        circle.x = new_center.x
+        circle.y = new_center.y
+        self.refresh_all()
+        self.table.selectRow(row)
+        self.statusBar().showMessage(f"Moved circle {circle.id} to touch {neighbor_label} circle", 5000)
 
     def on_table_cell_changed(self, row: int, column: int) -> None:
         if self._updating_table or row >= len(self.model.circles):

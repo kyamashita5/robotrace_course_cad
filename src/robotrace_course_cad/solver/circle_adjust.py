@@ -33,6 +33,35 @@ def adjusted_center_touching_neighbors(circles: list[HelperCircle], index: int) 
     return min(candidates, key=lambda point: point.distance_to(selected.center))
 
 
+def adjusted_center_touching_previous(circles: list[HelperCircle], index: int) -> Vec2 | None:
+    if len(circles) < 2 or not 0 <= index < len(circles):
+        return None
+    return adjusted_center_touching_anchor(circles[index], circles[(index - 1) % len(circles)])
+
+
+def adjusted_center_touching_next(circles: list[HelperCircle], index: int) -> Vec2 | None:
+    if len(circles) < 2 or not 0 <= index < len(circles):
+        return None
+    return adjusted_center_touching_anchor(circles[index], circles[(index + 1) % len(circles)])
+
+
+def adjusted_center_touching_anchor(moving: HelperCircle, anchor: HelperCircle) -> Vec2 | None:
+    direction_to_anchor = anchor.center - moving.center
+    current_distance = direction_to_anchor.norm()
+    target_distance = helper_circle_touch_distance(anchor, moving)
+
+    if current_distance <= EPSILON or target_distance <= TOUCH_DISTANCE_EPSILON_CM:
+        return None
+
+    # c' = c + t(c_anchor - c), so |c' - c_anchor| = |1 - t| * current_distance.
+    t_candidates = [
+        1.0 - target_distance / current_distance,
+        1.0 + target_distance / current_distance,
+    ]
+    best_t = min(t_candidates, key=lambda t: t * t)
+    return moving.center + direction_to_anchor * best_t
+
+
 def helper_circle_touch_distance(anchor: HelperCircle, moving: HelperCircle) -> float:
     if anchor.turn == moving.turn:
         return abs(anchor.r - moving.r)
