@@ -7,10 +7,11 @@ from PySide6.QtGui import QBrush, QColor, QFont, QPainterPath, QPen, QPolygonF
 from PySide6.QtWidgets import QGraphicsEllipseItem, QGraphicsItem, QGraphicsPathItem, QGraphicsScene, QGraphicsSimpleTextItem
 
 from robotrace_course_cad.model.course_model import CourseModel, HelperCircle, Turn
-from robotrace_course_cad.model.course_solution import ArcSegment, CornerMarker, CourseSolution, StartGoalMarker
+from robotrace_course_cad.model.course_solution import ArcSegment, CornerMarker, CourseSolution, StartGoalMarker, StartGoalSegment
 from robotrace_course_cad.model.geometry import Vec2
 
 CM_TO_SCENE = 10.0
+START_GOAL_AREA_HALF_WIDTH_CM = 20.0
 
 
 def to_scene(point: Vec2) -> QPointF:
@@ -69,6 +70,7 @@ def render_course(
     scene.setSceneRect(scene_rect)
     _draw_grid(scene, scene_rect)
     _draw_board_grid(scene, model, scene_rect)
+    _draw_start_goal_area(scene, solution)
     _draw_generated_line(scene, model, solution)
     _draw_corner_markers(scene, solution)
     _draw_start_goal_markers(scene, solution)
@@ -113,8 +115,9 @@ def _course_bounds_cm(model: CourseModel, solution: CourseSolution, margin_cm: f
 
     if solution.start_goal_segment is not None:
         segment = solution.start_goal_segment
-        xs.extend([segment.p_start.x, segment.p_end.x, segment.center.x])
-        ys.extend([segment.p_start.y, segment.p_end.y, segment.center.y])
+        for point in start_goal_area_points(segment):
+            xs.append(point.x)
+            ys.append(point.y)
 
     for marker in solution.start_goal_markers:
         xs.extend([marker.center.x - marker.long_side_cm, marker.center.x + marker.long_side_cm])
@@ -225,6 +228,20 @@ def _draw_generated_line(scene: QGraphicsScene, model: CourseModel, solution: Co
             scene.addItem(item)
 
 
+def _draw_start_goal_area(scene: QGraphicsScene, solution: CourseSolution) -> None:
+    if solution.start_goal_segment is None:
+        return
+
+    polygon = QPolygonF([to_scene(point) for point in start_goal_area_points(solution.start_goal_segment)])
+    item = scene.addPolygon(
+        polygon,
+        QPen(QColor(245, 177, 66, 80), 1.0),
+        QBrush(QColor(245, 177, 66, 45)),
+    )
+    item.setZValue(1)
+    item.setToolTip("Start/Goal area: 40 cm wide")
+
+
 def _arc_path(arc: ArcSegment) -> QPainterPath:
     start = to_scene(arc.p_start)
     path = QPainterPath(start)
@@ -320,6 +337,24 @@ def _marker_polygon(marker: CornerMarker) -> QPolygonF:
         marker.center - normal * half_long + tangent * half_short,
     ]
     return QPolygonF([to_scene(point) for point in points])
+
+
+def start_goal_area_points(
+    segment: StartGoalSegment,
+    extension_cm: float = 0.0,
+    half_width_cm: float = START_GOAL_AREA_HALF_WIDTH_CM,
+) -> list[Vec2]:
+    direction = (segment.p_end - segment.p_start).normalized()
+    left = direction.left_normal().normalized()
+    start = segment.p_start - direction * extension_cm
+    end = segment.p_end + direction * extension_cm
+    offset = left * half_width_cm
+    return [
+        start + offset,
+        end + offset,
+        end - offset,
+        start - offset,
+    ]
 
 
 def _draw_helper_connections(scene: QGraphicsScene, model: CourseModel) -> None:

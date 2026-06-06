@@ -6,6 +6,7 @@ from robotrace_course_cad.io.json_io import load_course_model
 from robotrace_course_cad.model.course_model import CourseModel, StartGoalHint
 from robotrace_course_cad.model.course_solution import CourseSolution, TangentSegment
 from robotrace_course_cad.model.geometry import Vec2
+from robotrace_course_cad.render.qt_renderer import start_goal_area_points
 from robotrace_course_cad.solver.course_solver import solve_course
 from robotrace_course_cad.solver.markers import generate_corner_markers, generate_start_goal_segment_and_markers
 
@@ -54,6 +55,21 @@ class MarkerGenerationTest(unittest.TestCase):
         self.assertAlmostEqual(markers[0].center.y, -7.0)
         self.assertAlmostEqual(markers[1].center.x, 60.0)
         self.assertAlmostEqual(markers[1].center.y, -7.0)
+
+    def test_start_goal_area_is_40_cm_wide_and_extensible(self) -> None:
+        tangent = line(3, 0, Vec2(-60.0, 0.0), Vec2(60.0, 0.0))
+        model = CourseModel(start_goal_hint=StartGoalHint(10.0, 20.0, 100.0))
+        segment, _markers = generate_start_goal_segment_and_markers(model, [tangent])
+
+        assert segment is not None
+        points = start_goal_area_points(segment)
+        extended_points = start_goal_area_points(segment, extension_cm=10.0)
+
+        self.assertEqual([(point.x, point.y) for point in points], [(-40.0, 20.0), (60.0, 20.0), (60.0, -20.0), (-40.0, -20.0)])
+        self.assertEqual(
+            [(point.x, point.y) for point in extended_points],
+            [(-50.0, 20.0), (70.0, 20.0), (70.0, -20.0), (-50.0, -20.0)],
+        )
 
 
 def line(from_id: int, to_id: int, start: Vec2, end: Vec2) -> TangentSegment:

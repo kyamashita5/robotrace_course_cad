@@ -311,6 +311,9 @@ class MainWindow(QMainWindow):
         helper_circles_checkbox = QCheckBox("Print helper circles")
         helper_circles_checkbox.setChecked(False)
         layout.addWidget(helper_circles_checkbox)
+        start_goal_area_checkbox = QCheckBox("Print start/goal area")
+        start_goal_area_checkbox.setChecked(True)
+        layout.addWidget(start_goal_area_checkbox)
         start_goal_markers_checkbox = QCheckBox("Print start/goal markers")
         start_goal_markers_checkbox.setChecked(True)
         layout.addWidget(start_goal_markers_checkbox)
@@ -330,6 +333,7 @@ class MainWindow(QMainWindow):
             print_helper_circles=helper_circles_checkbox.isChecked(),
             print_corner_markers=corner_markers_checkbox.isChecked(),
             print_start_goal_markers=start_goal_markers_checkbox.isChecked(),
+            print_start_goal_area=start_goal_area_checkbox.isChecked(),
         )
 
     def _default_drawing_export_path(self) -> Path:

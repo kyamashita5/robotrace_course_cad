@@ -5,18 +5,25 @@ from dataclasses import dataclass
 import math
 
 from PySide6.QtCore import QMarginsF, QRectF, QSize, QSizeF, Qt
-from PySide6.QtGui import QColor, QBrush, QFont, QPageLayout, QPageSize, QPainter, QPdfWriter, QPen, QTextOption
+from PySide6.QtGui import QColor, QBrush, QFont, QPageLayout, QPageSize, QPainter, QPdfWriter, QPen, QPolygonF, QTextOption
 from PySide6.QtSvg import QSvgGenerator
 from PySide6.QtWidgets import QGraphicsScene, QGraphicsTextItem
 
 from robotrace_course_cad.model.course_model import BoardGrid, CourseModel, Turn
 from robotrace_course_cad.model.course_solution import ArcSegment, CourseSolution, TangentSegment
-from robotrace_course_cad.render.qt_renderer import CM_TO_SCENE, _arc_path, _marker_polygon, to_scene
+from robotrace_course_cad.render.qt_renderer import CM_TO_SCENE, _arc_path, _marker_polygon, start_goal_area_points, to_scene
 
 EXPORT_MARGIN_CM = 5.0
 BOARD_LINE_PROXIMITY_CM = 19.0
+FINAL_START_GOAL_AREA_EXTENSION_CM = 10.0
+FINAL_START_GOAL_AREA_WIDTH_CM = 1.0
+FINAL_START_GOAL_OUTER_AREA_HALF_WIDTH_CM = 40.0
+START_GOAL_GATE_WIDTH_CM = 40.0
+START_GOAL_GATE_LENGTH_CM = 10.0
 HELPER_CIRCLE_WIDTH_CM = 0.48
 HELPER_LABEL_PIXEL_SIZE = 39
+START_GOAL_GATE_LABEL_PIXEL_SIZE = HELPER_LABEL_PIXEL_SIZE
+START_GOAL_GATE_COORD_PIXEL_SIZE = HELPER_LABEL_PIXEL_SIZE
 A4_WIDTH_MM = 297.0
 A4_HEIGHT_MM = 210.0
 A4_MARGIN_MM = 8.0
@@ -24,6 +31,8 @@ SVG_DPI = 72.0
 FINAL_BLACK = QColor("#000000")
 BOARD_CYAN = QColor("#00a9dc")
 HELPER_MAGENTA = QColor("#ff2a5a")
+START_GOAL_AREA_YELLOW = QColor("#f2c400")
+START_GOAL_OUTER_AREA_GRAY = QColor("#8d8d8d")
 
 
 @dataclass(frozen=True)
@@ -31,6 +40,8 @@ class FinalDrawingOptions:
     print_helper_circles: bool = False
     print_corner_markers: bool = True
     print_start_goal_markers: bool = True
+    print_start_goal_area: bool = True
+    print_start_goal_outer_area: bool = False
 
 
 def export_final_drawing(
@@ -64,10 +75,13 @@ def create_final_drawing_scene(
     scene.setSceneRect(scene_rect)
 
     _draw_occupied_grid_outlines(scene, model, solution)
+    protected_text_rects: list[QRectF] = []
+    if options.print_start_goal_area:
+        _draw_final_start_goal_area(scene, solution, protected_text_rects, options)
     _draw_final_line(scene, model, solution)
     _draw_final_markers(scene, solution, options)
     if options.print_helper_circles:
-        _draw_helper_circles(scene, model)
+        _draw_helper_circles(scene, model, protected_text_rects)
     return scene
 
 
@@ -129,6 +143,21 @@ def final_drawing_bounds_cm(
         for circle in model.circles:
             xs.extend([circle.x - circle.r, circle.x + circle.r])
             ys.extend([circle.y - circle.r, circle.y + circle.r])
+
+    if options.print_start_goal_area and solution.start_goal_segment is not None:
+        for point in start_goal_area_points(solution.start_goal_segment, FINAL_START_GOAL_AREA_EXTENSION_CM):
+            xs.append(point.x)
+            ys.append(point.y)
+        if options.print_start_goal_outer_area:
+            for point in final_start_goal_outer_area_points(solution.start_goal_segment):
+                xs.append(point.x)
+                ys.append(point.y)
+        for point in start_goal_gate_points(solution.start_goal_segment.p_start, solution.start_goal_segment):
+            xs.append(point.x)
+            ys.append(point.y)
+        for point in start_goal_gate_points(solution.start_goal_segment.p_end, solution.start_goal_segment):
+            xs.append(point.x)
+            ys.append(point.y)
 
     if not xs or not ys:
         return -10.0, 10.0, -10.0, 10.0
@@ -245,6 +274,153 @@ def _draw_occupied_grid_outlines(scene: QGraphicsScene, model: CourseModel, solu
         item.setZValue(5)
 
 
+def _draw_final_start_goal_area(
+    scene: QGraphicsScene,
+    solution: CourseSolution,
+    protected_text_rects: list[QRectF],
+    options: FinalDrawingOptions,
+) -> None:
+    if solution.start_goal_segment is None:
+        return
+
+    pen = QPen(START_GOAL_AREA_YELLOW, FINAL_START_GOAL_AREA_WIDTH_CM * CM_TO_SCENE)
+    pen.setStyle(Qt.PenStyle.DashLine)
+    pen.setJoinStyle(Qt.PenJoinStyle.MiterJoin)
+    if options.print_start_goal_outer_area:
+        outer_pen = QPen(START_GOAL_OUTER_AREA_GRAY, FINAL_START_GOAL_AREA_WIDTH_CM * CM_TO_SCENE)
+        outer_pen.setStyle(Qt.PenStyle.DashLine)
+        outer_pen.setJoinStyle(Qt.PenJoinStyle.MiterJoin)
+        outer_polygon = QPolygonF(
+            [to_scene(point) for point in final_start_goal_outer_area_points(solution.start_goal_segment)]
+        )
+        outer_item = scene.addPolygon(outer_polygon, outer_pen)
+        outer_item.setZValue(7)
+
+    polygon = QPolygonF(
+        [to_scene(point) for point in start_goal_area_points(solution.start_goal_segment, FINAL_START_GOAL_AREA_EXTENSION_CM)]
+    )
+    item = scene.addPolygon(polygon, pen)
+    item.setZValue(8)
+
+    _draw_start_goal_gate(scene, "GOAL", solution.start_goal_segment.p_start, solution.start_goal_segment, protected_text_rects)
+    _draw_start_goal_gate(scene, "START", solution.start_goal_segment.p_end, solution.start_goal_segment, protected_text_rects)
+
+
+def _draw_start_goal_gate(
+    scene: QGraphicsScene,
+    label: str,
+    point,
+    segment,
+    protected_text_rects: list[QRectF],
+) -> None:
+    gate_pen = QPen(FINAL_BLACK, 1.0 * CM_TO_SCENE)
+    gate_pen.setJoinStyle(Qt.PenJoinStyle.MiterJoin)
+    polygon = QPolygonF([to_scene(corner) for corner in start_goal_gate_points(point, segment)])
+    item = scene.addPolygon(polygon, gate_pen)
+    item.setZValue(12)
+
+    direction = (segment.p_end - segment.p_start).normalized()
+    left = direction.left_normal().normalized()
+    label_center = point + left * (START_GOAL_GATE_WIDTH_CM * 0.25)
+    protected_text_rects.append(
+        add_centered_text(scene, label, label_center, FINAL_BLACK, START_GOAL_GATE_LABEL_PIXEL_SIZE, z=32)
+    )
+    protected_text_rects.append(
+        add_right_aligned_text(
+            scene,
+            start_goal_coordinate_text(point),
+            start_goal_coordinate_anchor(point, segment),
+            HELPER_MAGENTA,
+            START_GOAL_GATE_COORD_PIXEL_SIZE,
+            z=32,
+        )
+    )
+
+
+def start_goal_gate_points(point, segment) -> list:
+    direction = (segment.p_end - segment.p_start).normalized()
+    left = direction.left_normal().normalized()
+    half_length = START_GOAL_GATE_LENGTH_CM / 2.0
+    half_width = START_GOAL_GATE_WIDTH_CM / 2.0
+    return [
+        point - direction * half_length + left * half_width,
+        point + direction * half_length + left * half_width,
+        point + direction * half_length - left * half_width,
+        point - direction * half_length - left * half_width,
+    ]
+
+
+def final_start_goal_outer_area_points(segment) -> list:
+    return start_goal_area_points(
+        segment,
+        extension_cm=FINAL_START_GOAL_AREA_EXTENSION_CM,
+        half_width_cm=FINAL_START_GOAL_OUTER_AREA_HALF_WIDTH_CM,
+    )
+
+
+def start_goal_coordinate_text(point) -> str:
+    return f"{format_coordinate(point.x)},{format_coordinate(point.y)}"
+
+
+def start_goal_coordinate_anchor(point, segment):
+    direction = (segment.p_end - segment.p_start).normalized()
+    left = direction.left_normal().normalized()
+    return point - left * (START_GOAL_GATE_WIDTH_CM / 2.0)
+
+
+def add_centered_text(
+    scene: QGraphicsScene,
+    text: str,
+    center,
+    color: QColor,
+    pixel_size: int,
+    z: float,
+) -> QRectF:
+    item = QGraphicsTextItem()
+    font = QFont("Arial")
+    font.setPixelSize(pixel_size)
+    font.setBold(True)
+    item.setFont(font)
+    item.setDefaultTextColor(color)
+    item.setPlainText(text)
+    item.document().setDocumentMargin(0.0)
+    item.setTextWidth(item.document().idealWidth())
+    rect = item.boundingRect()
+    scene_center = to_scene(center)
+    item.setPos(scene_center.x() - rect.width() / 2.0, scene_center.y() - rect.height() / 2.0)
+    item.setZValue(z)
+    scene.addItem(item)
+    return item.sceneBoundingRect()
+
+
+def add_right_aligned_text(
+    scene: QGraphicsScene,
+    text: str,
+    anchor,
+    color: QColor,
+    pixel_size: int,
+    z: float,
+) -> QRectF:
+    item = QGraphicsTextItem()
+    font = QFont("Arial")
+    font.setPixelSize(pixel_size)
+    font.setBold(True)
+    item.setFont(font)
+    item.setDefaultTextColor(color)
+    item.setPlainText(text)
+    item.document().setDocumentMargin(0.0)
+    text_option = QTextOption()
+    text_option.setAlignment(Qt.AlignmentFlag.AlignRight)
+    item.document().setDefaultTextOption(text_option)
+    item.setTextWidth(item.document().idealWidth())
+    rect = item.boundingRect()
+    scene_anchor = to_scene(anchor)
+    item.setPos(scene_anchor.x() - rect.width(), scene_anchor.y() - rect.height() / 2.0)
+    item.setZValue(z)
+    scene.addItem(item)
+    return item.sceneBoundingRect()
+
+
 def _draw_final_markers(scene: QGraphicsScene, solution: CourseSolution, options: FinalDrawingOptions) -> None:
     pen = QPen(FINAL_BLACK, 0)
     brush = QBrush(FINAL_BLACK)
@@ -260,9 +436,9 @@ def _draw_final_markers(scene: QGraphicsScene, solution: CourseSolution, options
             item.setZValue(20)
 
 
-def _draw_helper_circles(scene: QGraphicsScene, model: CourseModel) -> None:
+def _draw_helper_circles(scene: QGraphicsScene, model: CourseModel, protected_text_rects: list[QRectF] | None = None) -> None:
     pen = QPen(HELPER_MAGENTA, HELPER_CIRCLE_WIDTH_CM * CM_TO_SCENE)
-    text_rects: list[QRectF] = []
+    text_rects: list[QRectF] = list(protected_text_rects or [])
 
     for circle in sorted(model.circles, key=lambda c: (c.r, c.id)):
         r_scene = circle.r * CM_TO_SCENE

@@ -8,22 +8,32 @@ import unittest
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QGraphicsScene
 
 from robotrace_course_cad.io.json_io import load_course_model
 from robotrace_course_cad.render.final_drawing_exporter import (
     FinalDrawingOptions,
+    FINAL_START_GOAL_AREA_WIDTH_CM,
     HELPER_CIRCLE_WIDTH_CM,
     HELPER_LABEL_PIXEL_SIZE,
+    START_GOAL_GATE_COORD_PIXEL_SIZE,
+    START_GOAL_GATE_LABEL_PIXEL_SIZE,
     _helper_circle_text_item,
+    add_right_aligned_text,
     create_final_drawing_scene,
     export_final_drawing,
     fitted_target_rect,
+    final_start_goal_outer_area_points,
     helper_circle_label_text,
     occupied_grid_cells,
+    start_goal_coordinate_anchor,
+    start_goal_coordinate_text,
+    start_goal_gate_points,
     svg_pixel_size_for_mm,
 )
 from robotrace_course_cad.model.course_model import HelperCircle, Turn
+from robotrace_course_cad.model.course_solution import StartGoalSegment
+from robotrace_course_cad.model.geometry import Vec2
 from robotrace_course_cad.solver.course_solver import solve_course
 
 
@@ -81,6 +91,87 @@ class FinalDrawingExporterTest(unittest.TestCase):
         self.assertIn("#ff2a5a", svg.lower())
         self.assertIn('viewBox="0 0 297 210"', svg)
 
+    def test_exports_start_goal_area_by_default(self) -> None:
+        model = load_course_model("examples/sample_course.json")
+        solution = solve_course(model)
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            enabled_path = Path(tmp_dir) / "course_sg_area.svg"
+            outer_enabled_path = Path(tmp_dir) / "course_sg_outer_area.svg"
+            disabled_path = Path(tmp_dir) / "course_no_sg_area.svg"
+            export_final_drawing(enabled_path, model, solution)
+            export_final_drawing(
+                outer_enabled_path,
+                model,
+                solution,
+                FinalDrawingOptions(print_start_goal_outer_area=True),
+            )
+            export_final_drawing(disabled_path, model, solution, FinalDrawingOptions(print_start_goal_area=False))
+
+            enabled_svg = enabled_path.read_text(encoding="utf-8").lower()
+            outer_enabled_svg = outer_enabled_path.read_text(encoding="utf-8").lower()
+            disabled_svg = disabled_path.read_text(encoding="utf-8").lower()
+
+        self.assertIn("#f2c400", enabled_svg)
+        self.assertNotIn("#8d8d8d", enabled_svg)
+        self.assertIn("#8d8d8d", outer_enabled_svg)
+        self.assertNotIn("#f2c400", disabled_svg)
+        self.assertNotIn("#8d8d8d", disabled_svg)
+        self.assertIn("start", enabled_svg)
+        self.assertIn("goal", enabled_svg)
+
+    def test_start_goal_gate_geometry_is_40_by_10_cm(self) -> None:
+        segment = StartGoalSegment(
+            center=Vec2(10.0, 0.0),
+            p_start=Vec2(-40.0, 0.0),
+            p_end=Vec2(60.0, 0.0),
+            tangent_angle_deg=0.0,
+            length=100.0,
+        )
+
+        points = start_goal_gate_points(segment.p_start, segment)
+
+        self.assertEqual(
+            [(point.x, point.y) for point in points],
+            [(-45.0, 20.0), (-35.0, 20.0), (-35.0, -20.0), (-45.0, -20.0)],
+        )
+
+    def test_start_goal_outer_area_geometry_is_80_cm_wide(self) -> None:
+        segment = StartGoalSegment(
+            center=Vec2(10.0, 0.0),
+            p_start=Vec2(-40.0, 0.0),
+            p_end=Vec2(60.0, 0.0),
+            tangent_angle_deg=0.0,
+            length=100.0,
+        )
+
+        points = final_start_goal_outer_area_points(segment)
+
+        self.assertEqual(
+            [(point.x, point.y) for point in points],
+            [(-50.0, 40.0), (70.0, 40.0), (70.0, -40.0), (-50.0, -40.0)],
+        )
+
+    def test_start_goal_coordinate_text_uses_line_coordinates(self) -> None:
+        self.assertEqual(start_goal_coordinate_text(Vec2(40.0, 200.0)), "40,200")
+        self.assertEqual(start_goal_coordinate_text(Vec2(40.25, 99.94)), "40.2,99.9")
+
+    def test_start_goal_coordinate_text_is_right_aligned_to_area_outline(self) -> None:
+        segment = StartGoalSegment(
+            center=Vec2(10.0, 0.0),
+            p_start=Vec2(-40.0, 0.0),
+            p_end=Vec2(60.0, 0.0),
+            tangent_angle_deg=0.0,
+            length=100.0,
+        )
+        anchor = start_goal_coordinate_anchor(segment.p_start, segment)
+        scene = QGraphicsScene()
+
+        rect = add_right_aligned_text(scene, "40,200", anchor, Qt.GlobalColor.magenta, 39, z=1)
+
+        self.assertEqual((anchor.x, anchor.y), (-40.0, -20.0))
+        self.assertAlmostEqual(rect.right(), anchor.x * 10.0)
+
     def test_a4_svg_size_uses_physical_page_pixels(self) -> None:
         size = svg_pixel_size_for_mm(297.0, 210.0)
 
@@ -90,6 +181,11 @@ class FinalDrawingExporterTest(unittest.TestCase):
     def test_helper_circle_style_matches_clean_drawing_spec(self) -> None:
         self.assertAlmostEqual(HELPER_CIRCLE_WIDTH_CM, 0.48)
         self.assertEqual(HELPER_LABEL_PIXEL_SIZE, 39)
+        self.assertEqual(START_GOAL_GATE_LABEL_PIXEL_SIZE, HELPER_LABEL_PIXEL_SIZE)
+        self.assertEqual(START_GOAL_GATE_COORD_PIXEL_SIZE, HELPER_LABEL_PIXEL_SIZE)
+
+    def test_start_goal_area_outline_is_heavy_enough_for_clean_drawing(self) -> None:
+        self.assertAlmostEqual(FINAL_START_GOAL_AREA_WIDTH_CM, 1.0)
 
     def test_helper_circle_label_uses_two_lines_for_r20_and_larger(self) -> None:
         r10 = HelperCircle(id=0, x=219.0, y=204.0, r=10.0, turn=Turn.CCW)
