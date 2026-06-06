@@ -7,7 +7,7 @@ import unittest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QRectF, Qt
 from PySide6.QtWidgets import QApplication, QGraphicsScene
 
 from robotrace_course_cad.io.json_io import load_course_model
@@ -25,14 +25,16 @@ from robotrace_course_cad.render.final_drawing_exporter import (
     fitted_target_rect,
     final_start_goal_outer_area_points,
     helper_circle_label_text,
+    label_rect_intersects_paths,
+    line_label_protection_paths,
     occupied_grid_cells,
     start_goal_coordinate_anchor,
     start_goal_coordinate_text,
     start_goal_gate_points,
     svg_pixel_size_for_mm,
 )
-from robotrace_course_cad.model.course_model import HelperCircle, Turn
-from robotrace_course_cad.model.course_solution import StartGoalSegment
+from robotrace_course_cad.model.course_model import CourseModel, HelperCircle, Turn
+from robotrace_course_cad.model.course_solution import ArcSegment, CourseSolution, StartGoalSegment
 from robotrace_course_cad.model.geometry import Vec2
 from robotrace_course_cad.solver.course_solver import solve_course
 
@@ -201,6 +203,28 @@ class FinalDrawingExporterTest(unittest.TestCase):
         self.assertEqual(item.document().defaultTextOption().alignment(), Qt.AlignmentFlag.AlignCenter)
         self.assertTrue(item.font().bold())
         self.assertGreater(item.textWidth(), 0.0)
+
+    def test_helper_circle_label_uses_stroked_arc_shape_not_arc_bounding_box(self) -> None:
+        solution = CourseSolution(
+            tangents=[],
+            arcs=[
+                ArcSegment(
+                    circle_id=0,
+                    center=Vec2(0.0, 0.0),
+                    radius=10.0,
+                    p_start=Vec2(10.0, 0.0),
+                    p_end=Vec2(0.0, 10.0),
+                    turn=Turn.CCW,
+                    angle_rad=1.5707963267948966,
+                    length=15.707963267948966,
+                )
+            ],
+            issues=[],
+        )
+        paths = line_label_protection_paths(CourseModel(line_width_cm=1.9), solution)
+
+        self.assertFalse(label_rect_intersects_paths(QRectF(-5.0, -5.0, 10.0, 10.0), paths))
+        self.assertTrue(label_rect_intersects_paths(QRectF(95.0, -5.0, 10.0, 10.0), paths))
 
     def test_board_cells_include_cells_near_line_within_19_cm(self) -> None:
         model = load_course_model("examples/sample_course.json")

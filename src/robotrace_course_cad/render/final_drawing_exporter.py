@@ -5,7 +5,20 @@ from dataclasses import dataclass
 import math
 
 from PySide6.QtCore import QMarginsF, QRectF, QSize, QSizeF, Qt
-from PySide6.QtGui import QColor, QBrush, QFont, QPageLayout, QPageSize, QPainter, QPdfWriter, QPen, QPolygonF, QTextOption
+from PySide6.QtGui import (
+    QColor,
+    QBrush,
+    QFont,
+    QPageLayout,
+    QPageSize,
+    QPainter,
+    QPainterPath,
+    QPainterPathStroker,
+    QPdfWriter,
+    QPen,
+    QPolygonF,
+    QTextOption,
+)
 from PySide6.QtSvg import QSvgGenerator
 from PySide6.QtWidgets import QGraphicsScene, QGraphicsTextItem
 
@@ -22,6 +35,7 @@ START_GOAL_GATE_WIDTH_CM = 40.0
 START_GOAL_GATE_LENGTH_CM = 10.0
 HELPER_CIRCLE_WIDTH_CM = 0.48
 HELPER_LABEL_PIXEL_SIZE = 39
+LABEL_LINE_PROTECTION_PADDING_SCENE = 2.0
 START_GOAL_GATE_LABEL_PIXEL_SIZE = HELPER_LABEL_PIXEL_SIZE
 START_GOAL_GATE_COORD_PIXEL_SIZE = HELPER_LABEL_PIXEL_SIZE
 A4_WIDTH_MM = 297.0
@@ -81,7 +95,7 @@ def create_final_drawing_scene(
     _draw_final_line(scene, model, solution)
     _draw_final_markers(scene, solution, options)
     if options.print_helper_circles:
-        _draw_helper_circles(scene, model, protected_text_rects)
+        _draw_helper_circles(scene, model, protected_text_rects, line_label_protection_paths(model, solution))
     return scene
 
 
@@ -252,6 +266,28 @@ def _draw_final_line(scene: QGraphicsScene, model: CourseModel, solution: Course
             continue
         item = scene.addPath(_arc_path(arc), pen)
         item.setZValue(10)
+
+
+def line_label_protection_paths(model: CourseModel, solution: CourseSolution) -> list[QPainterPath]:
+    stroker = QPainterPathStroker()
+    stroker.setWidth(model.line_width_cm * CM_TO_SCENE + 2.0 * LABEL_LINE_PROTECTION_PADDING_SCENE)
+    stroker.setCapStyle(Qt.PenCapStyle.RoundCap)
+    stroker.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+
+    paths: list[QPainterPath] = []
+    for tangent in solution.tangents:
+        if tangent is None:
+            continue
+        path = QPainterPath(to_scene(tangent.p_from))
+        path.lineTo(to_scene(tangent.p_to))
+        paths.append(stroker.createStroke(path))
+
+    for arc in solution.arcs:
+        if arc is None:
+            continue
+        paths.append(stroker.createStroke(_arc_path(arc)))
+
+    return paths
 
 
 def _draw_occupied_grid_outlines(scene: QGraphicsScene, model: CourseModel, solution: CourseSolution) -> None:
@@ -436,9 +472,15 @@ def _draw_final_markers(scene: QGraphicsScene, solution: CourseSolution, options
             item.setZValue(20)
 
 
-def _draw_helper_circles(scene: QGraphicsScene, model: CourseModel, protected_text_rects: list[QRectF] | None = None) -> None:
+def _draw_helper_circles(
+    scene: QGraphicsScene,
+    model: CourseModel,
+    protected_text_rects: list[QRectF] | None = None,
+    protected_paths: list[QPainterPath] | None = None,
+) -> None:
     pen = QPen(HELPER_MAGENTA, HELPER_CIRCLE_WIDTH_CM * CM_TO_SCENE)
     text_rects: list[QRectF] = list(protected_text_rects or [])
+    paths = protected_paths or []
 
     for circle in sorted(model.circles, key=lambda c: (c.r, c.id)):
         r_scene = circle.r * CM_TO_SCENE
@@ -452,7 +494,7 @@ def _draw_helper_circles(scene: QGraphicsScene, model: CourseModel, protected_te
         )
         item.setZValue(30)
         text_item = _helper_circle_text_item(circle)
-        _place_helper_circle_text(text_item, center, r_scene, text_rects)
+        _place_helper_circle_text(text_item, center, r_scene, text_rects, paths)
         scene.addItem(text_item)
 
 
@@ -487,14 +529,18 @@ def _place_helper_circle_text(
     center,
     radius_scene: float,
     placed_rects: list[QRectF],
+    protected_paths: list[QPainterPath] | None = None,
 ) -> None:
     local_rect = item.boundingRect()
     offsets = helper_label_offsets(radius_scene)
+    paths = protected_paths or []
     for dx, dy in offsets:
         pos_x = center.x() + dx - local_rect.width() / 2.0
         pos_y = center.y() + dy - local_rect.height() / 2.0
         candidate = QRectF(pos_x, pos_y, local_rect.width(), local_rect.height())
-        if not any(candidate.intersects(rect.adjusted(-2, -2, 2, 2)) for rect in placed_rects):
+        if not any(candidate.intersects(rect.adjusted(-2, -2, 2, 2)) for rect in placed_rects) and not label_rect_intersects_paths(
+            candidate, paths
+        ):
             item.setPos(pos_x, pos_y)
             placed_rects.append(candidate)
             return
@@ -504,6 +550,15 @@ def _place_helper_circle_text(
     fallback = QRectF(pos_x, pos_y, local_rect.width(), local_rect.height())
     item.setPos(pos_x, pos_y)
     placed_rects.append(fallback)
+
+
+def label_rect_intersects_paths(rect: QRectF, paths: list[QPainterPath]) -> bool:
+    if not paths:
+        return False
+    rect_path = QPainterPath()
+    rect_path.addRect(rect)
+    center = rect.center()
+    return any(path.intersects(rect_path) or path.contains(center) for path in paths)
 
 
 def helper_label_offsets(radius_scene: float) -> list[tuple[float, float]]:
