@@ -26,6 +26,7 @@
 - uv
 - Git (Dowload ZIP でダウンロードする場合は不要)
 - 700MB程度の空き容量 (以下のスクリプトで仮想環境を作る場合)
+- 環境によっては、画面表示用に追加のライブラリ (`libxcb-cursor0` など) が必要になる場合があります
 
 インストール方法は公式ドキュメントを参照してください。
 
@@ -134,6 +135,13 @@ Pythonとuvが入っているか確認します。
 ```bash
 python3 --version
 uv --version
+```
+
+`Could not load the Qt platform plugin "xcb"` や `libxcb-cursor0 is needed` と表示される場合は、OS側のQt実行時依存を追加してください。
+
+```bash
+sudo apt update
+sudo apt install libxcb-cursor0
 ```
 
 仮想環境を作成し、依存ライブラリをインストールします。
