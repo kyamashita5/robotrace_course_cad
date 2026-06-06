@@ -1,0 +1,62 @@
+{
+  "board": {
+    "width_cm": 360.0,
+    "height_cm": 180.0
+  },
+  "line_width_cm": 1.9,
+  "min_edge_margin_cm": 20.0,
+  "grid": {
+    "origin_x_cm": 0.0,
+    "origin_y_cm": 0.0,
+    "cell_width_cm": 90.0,
+    "cell_height_cm": 135.0
+  },
+  "radius_presets_cm": [
+    10,
+    15,
+    20,
+    25,
+    30,
+    40,
+    50
+  ],
+  "start_goal_hint": {
+    "x": 40.0,
+    "y": 135.0,
+    "length": 100.0
+  },
+  "circles": [
+    {
+      "id": 0,
+      "x": 65.0,
+      "y": 225.0,
+      "r": 25.0,
+      "turn": "cw",
+      "locked": false
+    },
+    {
+      "id": 1,
+      "x": 320.0,
+      "y": 230.0,
+      "r": 20.0,
+      "turn": "cw",
+      "locked": false
+    },
+    {
+      "id": 2,
+      "x": 210.0,
+      "y": 50.0,
+      "r": 30.0,
+      "turn": "cw",
+      "locked": false
+    },
+    {
+      "id": 3,
+      "x": 60.0,
+      "y": 40.0,
+      "r": 20.0,
+      "turn": "cw",
+      "locked": false
+    }
+  ]
+}

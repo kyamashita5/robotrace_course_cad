@@ -80,11 +80,17 @@ class CourseModel:
 
 def default_course_model() -> CourseModel:
     return CourseModel(
+        board_width_cm=360.0,
+        board_height_cm=180.0,
+        line_width_cm=1.9,
+        min_edge_margin_cm=20.0,
+        radius_presets_cm=[10, 15, 20, 25, 30, 40, 50],
         circles=[
-            HelperCircle(0, -60.0, 0.0, 25.0, Turn.CCW),
-            HelperCircle(1, 20.0, 45.0, 20.0, Turn.CW),
-            HelperCircle(2, 85.0, -10.0, 30.0, Turn.CCW),
-            HelperCircle(3, 10.0, -55.0, 20.0, Turn.CW),
+            HelperCircle(0, 65.0, 225.0, 25.0, Turn.CW),
+            HelperCircle(1, 320.0, 230.0, 20.0, Turn.CW),
+            HelperCircle(2, 210.0, 50.0, 30.0, Turn.CW),
+            HelperCircle(3, 60.0, 40.0, 20.0, Turn.CW),
         ],
-        start_goal_hint=StartGoalHint(-25.0, -55.0, 100.0),
+        start_goal_hint=StartGoalHint(40.0, 135.0, 100.0),
+        board_grid=BoardGrid(0.0, 0.0, 90.0, 135.0),
     )

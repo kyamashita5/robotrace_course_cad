@@ -9,6 +9,19 @@ from robotrace_course_cad.model.course_model import HelperCircle, StartGoalHint,
 
 
 class JsonIoTest(unittest.TestCase):
+    def test_default_course_model_matches_template_course(self) -> None:
+        model = default_course_model()
+        template = load_course_model("examples/template_course.json")
+
+        self.assertEqual(model.board_width_cm, template.board_width_cm)
+        self.assertEqual(model.board_height_cm, template.board_height_cm)
+        self.assertEqual(model.line_width_cm, template.line_width_cm)
+        self.assertEqual(model.min_edge_margin_cm, template.min_edge_margin_cm)
+        self.assertEqual(model.radius_presets_cm, template.radius_presets_cm)
+        self.assertEqual(model.board_grid, template.board_grid)
+        self.assertEqual(model.start_goal_hint, template.start_goal_hint)
+        self.assertEqual(model.circles, template.circles)
+
     def test_save_and_load_course_model(self) -> None:
         model = default_course_model()
         model.board_width_cm = 420.0
