@@ -8,6 +8,7 @@ from robotrace_course_cad.solver.markers import generate_corner_markers, generat
 from robotrace_course_cad.solver.tangents import choose_tangent_closest_to_point, oriented_tangent_candidates_by_turn
 
 ZERO_LENGTH_TANGENT_EPSILON_CM = 1e-3
+MIN_TANGENT_WARNING_LENGTH_CM = 9.95
 
 
 def solve_course(model: CourseModel) -> CourseSolution:
@@ -63,7 +64,7 @@ def solve_course(model: CourseModel) -> CourseSolution:
         prev_tangent = selected
 
     for i, tangent in enumerate(tangents):
-        if tangent is not None and ZERO_LENGTH_TANGENT_EPSILON_CM < tangent.length <= MIN_SEGMENT_LENGTH_CM:
+        if tangent is not None and ZERO_LENGTH_TANGENT_EPSILON_CM < tangent.length < MIN_TANGENT_WARNING_LENGTH_CM:
             issues.append(
                 ValidationIssue(
                     severity="warning",

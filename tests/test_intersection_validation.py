@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 import unittest
 
-from robotrace_course_cad.model.course_model import Turn
+from robotrace_course_cad.model.course_model import CourseModel, HelperCircle, Turn
 from robotrace_course_cad.model.course_solution import ArcSegment, CourseSolution, TangentSegment
 from robotrace_course_cad.model.geometry import Vec2
 from robotrace_course_cad.solver.course_solver import solve_course
@@ -117,6 +117,13 @@ class IntersectionValidationTest(unittest.TestCase):
 
         self.assertEqual(zero_length_warnings, [])
 
+    def test_tangent_at_ten_cm_is_not_warned_but_just_under_threshold_is(self) -> None:
+        ten_cm_solution = solve_course(two_circle_course(distance=10.0))
+        nine_nine_cm_solution = solve_course(two_circle_course(distance=9.9))
+
+        self.assertEqual(short_tangent_warnings(ten_cm_solution), [])
+        self.assertTrue(short_tangent_warnings(nine_nine_cm_solution))
+
 
 def line(from_id: int, to_id: int, start: Vec2, end: Vec2) -> TangentSegment:
     return TangentSegment(
@@ -127,6 +134,23 @@ def line(from_id: int, to_id: int, start: Vec2, end: Vec2) -> TangentSegment:
         kind="outer",
         choice=0,
     )
+
+
+def two_circle_course(distance: float) -> CourseModel:
+    return CourseModel(
+        circles=[
+            HelperCircle(0, 0.0, 0.0, 10.0, Turn.CCW),
+            HelperCircle(1, distance, 0.0, 10.0, Turn.CCW),
+        ]
+    )
+
+
+def short_tangent_warnings(solution: CourseSolution) -> list[str]:
+    return [
+        issue.message
+        for issue in solution.issues
+        if issue.severity == "warning" and issue.message.startswith("Tangent ") and " is short " in issue.message
+    ]
 
 
 if __name__ == "__main__":
