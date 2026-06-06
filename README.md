@@ -8,6 +8,8 @@
 想定ユーザーは、IDEでロボット向けのコードを書いた経験はあるものの、Pythonの環境構築にはあまり慣れていない人です。このREADMEでは、`uv` を使ってプロジェクト専用のPython環境を作る手順を中心に説明します。
 -->
 
+![スクリーンショット](doc/fig/screenshot.png)
+
 ## 主な機能
 コース形状を円(補助円)の列として管理しており、以下の機能があります。
 - 補助円の追加、削除、並べ替え、座標・半径・旋回方向の編集
@@ -22,9 +24,10 @@
 
 - Python 3.10以上
 - uv
-- Git
+- Git (Dowload ZIP でダウンロードする場合は不要)
+- 700MB程度の空き容量 (以下のスクリプトで仮想環境を作る場合)
 
-Pythonとuvのインストール方法は環境により変わるため、公式ドキュメントも参照してください。
+インストール方法は公式ドキュメントを参照してください。
 
 - Python: https://www.python.org/downloads/
 - uv: https://docs.astral.sh/uv/
@@ -44,6 +47,7 @@ Windows:
 ```powershell
 .\run_robotrace_course_cad.bat
 ```
+(エクスプローラで `run_robotrace_course_cad.bat` をダブルクリックしても起動できます)
 
 Ubuntu:
 
@@ -65,7 +69,7 @@ Ubuntu:
 ./run_robotrace_course_cad.sh examples/synthetic/2025alljapan.json
 ```
 
-手動で環境を作る場合は、以下を開いてください。
+手動で環境を作る場合は、以下を参照してください。
 
 <details>
 <summary>Windows</summary>
@@ -180,8 +184,8 @@ QT_QPA_PLATFORM=xcb robotrace-course-cad
 1. アプリを起動します。
 2. 右側の `Helper Circles` テーブルで補助円の座標、半径、旋回方向を編集します。
 3. 補助円は左側のキャンバス上でもドラッグして動かせます。
-4. `Fit Touch`、`Fit Prev`、`Fit Next` で選択中の補助円を周辺の円へ接する位置に補正できます。
-5. `File > Save JSON` または `Save JSON As...` でコースデータを保存します。
+4. `Fit Touch`、`Fit Prev`、`Fit Next` で選択中の補助円を周辺の円へ接する位置に補正できます。シケインや蛸壺、S字カーブの設計にご活用ください。
+5. `File > Save JSON` または `Save JSON As...` でコースデータを保存します。Ctrl+S でも保存できます。
 6. `File > Export Drawing...` または右側の `Export SVG/PDF...` から清書版を出力します。
 
 
