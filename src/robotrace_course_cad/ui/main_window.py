@@ -16,6 +16,10 @@ from PySide6.QtWidgets import (
     QLabel,
     QMainWindow,
     QMessageBox,
+    QCheckBox,
+    QDialog,
+    QDialogButtonBox,
+    QPlainTextEdit,
     QPushButton,
     QTableWidget,
     QTableWidgetItem,
@@ -25,7 +29,7 @@ from PySide6.QtWidgets import (
 
 from robotrace_course_cad.io.json_io import load_course_model, save_course_model
 from robotrace_course_cad.model.course_model import CourseModel, HelperCircle, Turn
-from robotrace_course_cad.render.final_drawing_exporter import export_final_drawing
+from robotrace_course_cad.render.final_drawing_exporter import FinalDrawingOptions, export_final_drawing
 from robotrace_course_cad.render.qt_renderer import render_course
 from robotrace_course_cad.solver.circle_adjust import (
     adjusted_center_touching_neighbors,
@@ -55,8 +59,9 @@ class MainWindow(QMainWindow):
         self.grid_origin_y = _spin(-10000, 10000, self.model.board_grid.origin_y)
         self.grid_cell_width = _spin(0.1, 10000, self.model.board_grid.cell_width)
         self.grid_cell_height = _spin(0.1, 10000, self.model.board_grid.cell_height)
-        self.issue_label = QLabel()
-        self.issue_label.setWordWrap(True)
+        self.issue_label = QPlainTextEdit()
+        self.issue_label.setReadOnly(True)
+        self.issue_label.setMinimumHeight(120)
 
         self._build_ui()
         self._build_menu()
@@ -213,9 +218,9 @@ class MainWindow(QMainWindow):
 
     def refresh_issues(self) -> None:
         if not self.solution.issues:
-            self.issue_label.setText("No solver messages.")
+            self.issue_label.setPlainText("No solver messages.")
             return
-        self.issue_label.setText("\n".join(f"{issue.severity.upper()}: {issue.message}" for issue in self.solution.issues))
+        self.issue_label.setPlainText("\n".join(f"{issue.severity.upper()}: {issue.message}" for issue in self.solution.issues))
 
     def open_json(self) -> None:
         start_dir = str(self.model_path.parent) if self.model_path else ""
@@ -287,13 +292,45 @@ class MainWindow(QMainWindow):
         if export_path.suffix == "":
             export_path = export_path.with_suffix(".svg")
 
+        options = self.ask_final_drawing_options()
+        if options is None:
+            return
+
         try:
-            export_final_drawing(export_path, self.model, self.solution)
+            export_final_drawing(export_path, self.model, self.solution, options)
         except (OSError, ValueError) as exc:
             QMessageBox.critical(self, "Export Failed", f"Could not export drawing:\n{exc}")
             return
 
         self.statusBar().showMessage(f"Exported drawing: {export_path}", 5000)
+
+    def ask_final_drawing_options(self) -> FinalDrawingOptions | None:
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Drawing Export Options")
+        layout = QVBoxLayout()
+        helper_circles_checkbox = QCheckBox("Print helper circles")
+        helper_circles_checkbox.setChecked(False)
+        layout.addWidget(helper_circles_checkbox)
+        start_goal_markers_checkbox = QCheckBox("Print start/goal markers")
+        start_goal_markers_checkbox.setChecked(True)
+        layout.addWidget(start_goal_markers_checkbox)
+        corner_markers_checkbox = QCheckBox("Print corner markers")
+        corner_markers_checkbox.setChecked(True)
+        layout.addWidget(corner_markers_checkbox)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        layout.addWidget(buttons)
+        dialog.setLayout(layout)
+
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return None
+        return FinalDrawingOptions(
+            print_helper_circles=helper_circles_checkbox.isChecked(),
+            print_corner_markers=corner_markers_checkbox.isChecked(),
+            print_start_goal_markers=start_goal_markers_checkbox.isChecked(),
+        )
 
     def _default_drawing_export_path(self) -> Path:
         if self.model_path is None:

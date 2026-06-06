@@ -1,25 +1,47 @@
 from __future__ import annotations
 
 from pathlib import Path
+from dataclasses import dataclass
 import math
 
 from PySide6.QtCore import QMarginsF, QRectF, QSize, QSizeF, Qt
-from PySide6.QtGui import QColor, QBrush, QPageLayout, QPageSize, QPainter, QPdfWriter, QPen
+from PySide6.QtGui import QColor, QBrush, QFont, QPageLayout, QPageSize, QPainter, QPdfWriter, QPen, QTextOption
 from PySide6.QtSvg import QSvgGenerator
-from PySide6.QtWidgets import QGraphicsScene
+from PySide6.QtWidgets import QGraphicsScene, QGraphicsTextItem
 
 from robotrace_course_cad.model.course_model import BoardGrid, CourseModel, Turn
 from robotrace_course_cad.model.course_solution import ArcSegment, CourseSolution, TangentSegment
 from robotrace_course_cad.render.qt_renderer import CM_TO_SCENE, _arc_path, _marker_polygon, to_scene
 
 EXPORT_MARGIN_CM = 5.0
-GRID_OUTLINE_WIDTH_CM = 0.2
+BOARD_LINE_PROXIMITY_CM = 19.0
+HELPER_CIRCLE_WIDTH_CM = 0.48
+HELPER_LABEL_PIXEL_SIZE = 39
+A4_WIDTH_MM = 297.0
+A4_HEIGHT_MM = 210.0
+A4_MARGIN_MM = 8.0
+SVG_DPI = 72.0
+FINAL_BLACK = QColor("#000000")
+BOARD_CYAN = QColor("#00a9dc")
+HELPER_MAGENTA = QColor("#ff2a5a")
 
 
-def export_final_drawing(path: str | Path, model: CourseModel, solution: CourseSolution) -> None:
+@dataclass(frozen=True)
+class FinalDrawingOptions:
+    print_helper_circles: bool = False
+    print_corner_markers: bool = True
+    print_start_goal_markers: bool = True
+
+
+def export_final_drawing(
+    path: str | Path,
+    model: CourseModel,
+    solution: CourseSolution,
+    options: FinalDrawingOptions | None = None,
+) -> None:
     export_path = Path(path)
     suffix = export_path.suffix.lower()
-    scene = create_final_drawing_scene(model, solution)
+    scene = create_final_drawing_scene(model, solution, options or FinalDrawingOptions())
 
     if suffix == ".svg":
         export_scene_to_svg(scene, export_path)
@@ -31,19 +53,30 @@ def export_final_drawing(path: str | Path, model: CourseModel, solution: CourseS
     raise ValueError("Export path must end with .svg or .pdf")
 
 
-def create_final_drawing_scene(model: CourseModel, solution: CourseSolution) -> QGraphicsScene:
+def create_final_drawing_scene(
+    model: CourseModel,
+    solution: CourseSolution,
+    options: FinalDrawingOptions | None = None,
+) -> QGraphicsScene:
+    options = options or FinalDrawingOptions()
     scene = QGraphicsScene()
-    scene_rect = final_drawing_scene_rect(model, solution)
+    scene_rect = final_drawing_scene_rect(model, solution, options)
     scene.setSceneRect(scene_rect)
 
     _draw_occupied_grid_outlines(scene, model, solution)
     _draw_final_line(scene, model, solution)
-    _draw_final_markers(scene, solution)
+    _draw_final_markers(scene, solution, options)
+    if options.print_helper_circles:
+        _draw_helper_circles(scene, model)
     return scene
 
 
-def final_drawing_scene_rect(model: CourseModel, solution: CourseSolution) -> QRectF:
-    min_x, max_x, min_y, max_y = final_drawing_bounds_cm(model, solution)
+def final_drawing_scene_rect(
+    model: CourseModel,
+    solution: CourseSolution,
+    options: FinalDrawingOptions | None = None,
+) -> QRectF:
+    min_x, max_x, min_y, max_y = final_drawing_bounds_cm(model, solution, options or FinalDrawingOptions())
     return QRectF(
         min_x * CM_TO_SCENE,
         -max_y * CM_TO_SCENE,
@@ -52,7 +85,12 @@ def final_drawing_scene_rect(model: CourseModel, solution: CourseSolution) -> QR
     )
 
 
-def final_drawing_bounds_cm(model: CourseModel, solution: CourseSolution) -> tuple[float, float, float, float]:
+def final_drawing_bounds_cm(
+    model: CourseModel,
+    solution: CourseSolution,
+    options: FinalDrawingOptions | None = None,
+) -> tuple[float, float, float, float]:
+    options = options or FinalDrawingOptions()
     line_half_width = model.line_width_cm / 2.0
     xs: list[float] = []
     ys: list[float] = []
@@ -72,7 +110,12 @@ def final_drawing_bounds_cm(model: CourseModel, solution: CourseSolution) -> tup
         xs.extend([arc.center.x - radius, arc.center.x + radius])
         ys.extend([arc.center.y - radius, arc.center.y + radius])
 
-    for marker in [*solution.corner_markers, *solution.start_goal_markers]:
+    markers = []
+    if options.print_corner_markers:
+        markers.extend(solution.corner_markers)
+    if options.print_start_goal_markers:
+        markers.extend(solution.start_goal_markers)
+    for marker in markers:
         extent = max(marker.long_side_cm, marker.short_side_cm)
         xs.extend([marker.center.x - extent, marker.center.x + extent])
         ys.extend([marker.center.y - extent, marker.center.y + extent])
@@ -81,6 +124,11 @@ def final_drawing_bounds_cm(model: CourseModel, solution: CourseSolution) -> tup
         min_cell_x, max_cell_x, min_cell_y, max_cell_y = cell_bounds_cm(model.board_grid, cell_x, cell_y)
         xs.extend([min_cell_x, max_cell_x])
         ys.extend([min_cell_y, max_cell_y])
+
+    if options.print_helper_circles:
+        for circle in model.circles:
+            xs.extend([circle.x - circle.r, circle.x + circle.r])
+            ys.extend([circle.y - circle.r, circle.y + circle.r])
 
     if not xs or not ys:
         return -10.0, 10.0, -10.0, 10.0
@@ -94,38 +142,71 @@ def final_drawing_bounds_cm(model: CourseModel, solution: CourseSolution) -> tup
 
 def export_scene_to_svg(scene: QGraphicsScene, path: Path) -> None:
     rect = scene.sceneRect()
+    page_width = A4_WIDTH_MM
+    page_height = A4_HEIGHT_MM
+    if rect.height() > rect.width():
+        page_width, page_height = A4_HEIGHT_MM, A4_WIDTH_MM
+
     generator = QSvgGenerator()
     generator.setFileName(str(path))
-    generator.setSize(QSize(math.ceil(rect.width()), math.ceil(rect.height())))
-    generator.setViewBox(QRectF(0, 0, rect.width(), rect.height()))
+    generator.setSize(svg_pixel_size_for_mm(page_width, page_height))
+    generator.setViewBox(QRectF(0, 0, page_width, page_height))
     generator.setTitle("Robotrace Course Drawing")
 
     painter = QPainter(generator)
     try:
-        scene.render(painter, QRectF(0, 0, rect.width(), rect.height()), rect)
+        target = fitted_target_rect(rect, page_width, page_height, A4_MARGIN_MM)
+        scene.render(painter, target, rect)
     finally:
         painter.end()
 
 
 def export_scene_to_pdf(scene: QGraphicsScene, path: Path) -> None:
     rect = scene.sceneRect()
-    width_mm = rect.width() / CM_TO_SCENE * 10.0
-    height_mm = rect.height() / CM_TO_SCENE * 10.0
+    page_width = A4_WIDTH_MM
+    page_height = A4_HEIGHT_MM
+    if rect.height() > rect.width():
+        page_width, page_height = A4_HEIGHT_MM, A4_WIDTH_MM
 
     writer = QPdfWriter(str(path))
     writer.setResolution(300)
-    writer.setPageSize(QPageSize(QSizeF(width_mm, height_mm), QPageSize.Unit.Millimeter))
+    writer.setPageSize(QPageSize(QSizeF(page_width, page_height), QPageSize.Unit.Millimeter))
     writer.setPageMargins(QMarginsF(0, 0, 0, 0), QPageLayout.Unit.Millimeter)
 
     painter = QPainter(writer)
     try:
-        scene.render(painter, QRectF(0, 0, writer.width(), writer.height()), rect)
+        scale_x = writer.width() / page_width
+        scale_y = writer.height() / page_height
+        target_mm = fitted_target_rect(rect, page_width, page_height, A4_MARGIN_MM)
+        target_device = QRectF(
+            target_mm.x() * scale_x,
+            target_mm.y() * scale_y,
+            target_mm.width() * scale_x,
+            target_mm.height() * scale_y,
+        )
+        scene.render(painter, target_device, rect)
     finally:
         painter.end()
 
 
+def fitted_target_rect(source: QRectF, page_width: float, page_height: float, margin: float) -> QRectF:
+    available_width = max(1.0, page_width - margin * 2.0)
+    available_height = max(1.0, page_height - margin * 2.0)
+    scale = min(available_width / source.width(), available_height / source.height())
+    width = source.width() * scale
+    height = source.height() * scale
+    return QRectF((page_width - width) / 2.0, (page_height - height) / 2.0, width, height)
+
+
+def svg_pixel_size_for_mm(width_mm: float, height_mm: float) -> QSize:
+    return QSize(
+        max(1, round(width_mm / 25.4 * SVG_DPI)),
+        max(1, round(height_mm / 25.4 * SVG_DPI)),
+    )
+
+
 def _draw_final_line(scene: QGraphicsScene, model: CourseModel, solution: CourseSolution) -> None:
-    pen = QPen(QColor("#000000"), model.line_width_cm * CM_TO_SCENE)
+    pen = QPen(FINAL_BLACK, model.line_width_cm * CM_TO_SCENE)
     pen.setCapStyle(Qt.PenCapStyle.RoundCap)
     pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
 
@@ -149,7 +230,7 @@ def _draw_occupied_grid_outlines(scene: QGraphicsScene, model: CourseModel, solu
     if not cells:
         return
 
-    pen = QPen(QColor("#000000"), GRID_OUTLINE_WIDTH_CM * CM_TO_SCENE)
+    pen = QPen(BOARD_CYAN, model.line_width_cm * CM_TO_SCENE)
     pen.setJoinStyle(Qt.PenJoinStyle.MiterJoin)
 
     for cell_x, cell_y in sorted(cells):
@@ -164,17 +245,112 @@ def _draw_occupied_grid_outlines(scene: QGraphicsScene, model: CourseModel, solu
         item.setZValue(5)
 
 
-def _draw_final_markers(scene: QGraphicsScene, solution: CourseSolution) -> None:
-    pen = QPen(QColor("#000000"), 0)
-    brush = QBrush(QColor("#000000"))
+def _draw_final_markers(scene: QGraphicsScene, solution: CourseSolution, options: FinalDrawingOptions) -> None:
+    pen = QPen(FINAL_BLACK, 0)
+    brush = QBrush(FINAL_BLACK)
 
-    for marker in solution.corner_markers:
-        item = scene.addPolygon(_marker_polygon(marker), pen, brush)
-        item.setZValue(20)
+    if options.print_corner_markers:
+        for marker in solution.corner_markers:
+            item = scene.addPolygon(_marker_polygon(marker), pen, brush)
+            item.setZValue(20)
 
-    for marker in solution.start_goal_markers:
-        item = scene.addPolygon(_marker_polygon(marker), pen, brush)
-        item.setZValue(20)
+    if options.print_start_goal_markers:
+        for marker in solution.start_goal_markers:
+            item = scene.addPolygon(_marker_polygon(marker), pen, brush)
+            item.setZValue(20)
+
+
+def _draw_helper_circles(scene: QGraphicsScene, model: CourseModel) -> None:
+    pen = QPen(HELPER_MAGENTA, HELPER_CIRCLE_WIDTH_CM * CM_TO_SCENE)
+    text_rects: list[QRectF] = []
+
+    for circle in sorted(model.circles, key=lambda c: (c.r, c.id)):
+        r_scene = circle.r * CM_TO_SCENE
+        center = to_scene(circle.center)
+        item = scene.addEllipse(
+            center.x() - r_scene,
+            center.y() - r_scene,
+            2.0 * r_scene,
+            2.0 * r_scene,
+            pen,
+        )
+        item.setZValue(30)
+        text_item = _helper_circle_text_item(circle)
+        _place_helper_circle_text(text_item, center, r_scene, text_rects)
+        scene.addItem(text_item)
+
+
+def _helper_circle_text_item(circle) -> QGraphicsTextItem:
+    item = QGraphicsTextItem()
+    font = QFont("Arial")
+    font.setPixelSize(HELPER_LABEL_PIXEL_SIZE)
+    font.setBold(True)
+    item.setFont(font)
+    item.setDefaultTextColor(HELPER_MAGENTA)
+    item.setPlainText(helper_circle_label_text(circle))
+    item.document().setDocumentMargin(0.0)
+    text_option = QTextOption()
+    text_option.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    item.document().setDefaultTextOption(text_option)
+    item.setTextWidth(item.document().idealWidth())
+    item.setZValue(31)
+    return item
+
+
+def helper_circle_label_text(circle) -> str:
+    center_x = format_coordinate(circle.x)
+    center_y = format_coordinate(circle.y)
+    radius_text = f"R{format_radius(circle.r)}"
+    if circle.r >= 20.0:
+        return f"{radius_text}\n{center_x}, {center_y}"
+    return f"{radius_text}\n{center_x},\n{center_y}"
+
+
+def _place_helper_circle_text(
+    item: QGraphicsTextItem,
+    center,
+    radius_scene: float,
+    placed_rects: list[QRectF],
+) -> None:
+    local_rect = item.boundingRect()
+    offsets = helper_label_offsets(radius_scene)
+    for dx, dy in offsets:
+        pos_x = center.x() + dx - local_rect.width() / 2.0
+        pos_y = center.y() + dy - local_rect.height() / 2.0
+        candidate = QRectF(pos_x, pos_y, local_rect.width(), local_rect.height())
+        if not any(candidate.intersects(rect.adjusted(-2, -2, 2, 2)) for rect in placed_rects):
+            item.setPos(pos_x, pos_y)
+            placed_rects.append(candidate)
+            return
+
+    pos_x = center.x() - local_rect.width() / 2.0
+    pos_y = center.y() - local_rect.height() / 2.0
+    fallback = QRectF(pos_x, pos_y, local_rect.width(), local_rect.height())
+    item.setPos(pos_x, pos_y)
+    placed_rects.append(fallback)
+
+
+def helper_label_offsets(radius_scene: float) -> list[tuple[float, float]]:
+    offsets = [(0.0, 0.0)]
+    step = max(radius_scene * 0.35, 18.0)
+    for ring in range(1, 12):
+        distance = step * ring
+        for angle_deg in range(0, 360, 45):
+            angle = math.radians(angle_deg)
+            offsets.append((math.cos(angle) * distance, math.sin(angle) * distance))
+    return offsets
+
+
+def format_radius(value: float) -> str:
+    if abs(value - round(value)) < 1e-6:
+        return str(int(round(value)))
+    return f"{value:.1f}"
+
+
+def format_coordinate(value: float) -> str:
+    if abs(value - round(value)) < 1e-6:
+        return str(int(round(value)))
+    return f"{value:.1f}"
 
 
 def occupied_grid_cells(model: CourseModel, solution: CourseSolution) -> set[tuple[int, int]]:
@@ -185,16 +361,17 @@ def occupied_grid_cells(model: CourseModel, solution: CourseSolution) -> set[tup
     cells: set[tuple[int, int]] = set()
     sample_step = max(1.0, min(5.0, min(grid.cell_width, grid.cell_height) / 5.0))
     line_half_width = model.line_width_cm / 2.0
+    board_detection_distance = line_half_width + BOARD_LINE_PROXIMITY_CM
 
     for tangent in solution.tangents:
         if tangent is not None:
             for point in sample_tangent(tangent, sample_step):
-                mark_cells_near_point(cells, grid, point, line_half_width)
+                mark_cells_near_point(cells, grid, point, board_detection_distance)
 
     for arc in solution.arcs:
         if arc is not None:
             for point in sample_arc(arc, sample_step):
-                mark_cells_near_point(cells, grid, point, line_half_width)
+                mark_cells_near_point(cells, grid, point, board_detection_distance)
 
     return cells
 

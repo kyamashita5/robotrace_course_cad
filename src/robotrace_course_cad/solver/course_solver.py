@@ -75,6 +75,12 @@ def solve_course(model: CourseModel) -> CourseSolution:
 
     arcs, arc_issues = generate_arcs(circles, tangents)
     issues.extend(arc_issues)
+    issues.append(
+        ValidationIssue(
+            severity="info",
+            message=f"Course centerline length: {course_length_cm(tangents, arcs) / 100.0:.2f} m",
+        )
+    )
     solution = CourseSolution(tangents=tangents, arcs=arcs, issues=issues)
     issues.extend(validate_intersections(solution))
     start_goal_segment, start_goal_markers = generate_start_goal_segment_and_markers(model, tangents)
@@ -104,3 +110,9 @@ def choose_candidate_consistent_with_previous(
         return penalty, length
 
     return min(candidates, key=score)
+
+
+def course_length_cm(tangents, arcs) -> float:
+    tangent_length = sum(tangent.length for tangent in tangents if tangent is not None)
+    arc_length = sum(arc.length for arc in arcs if arc is not None)
+    return tangent_length + arc_length
