@@ -31,6 +31,41 @@ Pythonとuvのインストール方法は環境により変わるため、公式
 - Git: https://git-scm.com/downloads
 
 ## セットアップ
+まずこのレポジトリを適当な場所にクローンしてください。
+```bash
+git clone https://github.com/kyamashita5/robotrace_course_cad.git
+cd robotrace_course_cad
+```
+
+実行は同梱スクリプトを使うのが簡単です。以下を実行すると、Python/uvの存在確認、仮想環境 `.venv` の作成、依存ライブラリのインストール、アプリ起動までをまとめて行います。
+
+Windows:
+
+```powershell
+.\run_robotrace_course_cad.bat
+```
+
+Ubuntu:
+
+```bash
+./run_robotrace_course_cad.sh
+```
+
+JSONファイルを指定して起動する場合は、ファイル名を後ろに付けます。
+
+Windows:
+
+```powershell
+.\run_robotrace_course_cad.bat examples\synthetic\2025alljapan.json
+```
+
+Ubuntu:
+
+```bash
+./run_robotrace_course_cad.sh examples/synthetic/2025alljapan.json
+```
+
+手動で環境を作る場合は、以下を開いてください。
 
 <details>
 <summary>Windows</summary>
