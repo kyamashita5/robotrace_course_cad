@@ -1,0 +1,511 @@
+{
+  "tangents": [
+    {
+      "from_circle_id": 0,
+      "to_circle_id": 1,
+      "p_from": {
+        "x": 40.0,
+        "y": 240.0
+      },
+      "p_to": {
+        "x": 150.0,
+        "y": 240.0
+      },
+      "length_cm": 110.0
+    },
+    {
+      "from_circle_id": 1,
+      "to_circle_id": 2,
+      "p_from": {
+        "x": 165.0,
+        "y": 242.303039929
+      },
+      "p_to": {
+        "x": 165.0,
+        "y": 242.303039929
+      },
+      "length_cm": 0.0
+    },
+    {
+      "from_circle_id": 2,
+      "to_circle_id": 3,
+      "p_from": {
+        "x": 195.0,
+        "y": 242.303039929
+      },
+      "p_to": {
+        "x": 195.0,
+        "y": 242.303039929
+      },
+      "length_cm": 0.0
+    },
+    {
+      "from_circle_id": 3,
+      "to_circle_id": 4,
+      "p_from": {
+        "x": 210.0,
+        "y": 240.0
+      },
+      "p_to": {
+        "x": 290.0,
+        "y": 240.0
+      },
+      "length_cm": 80.0
+    },
+    {
+      "from_circle_id": 4,
+      "to_circle_id": 5,
+      "p_from": {
+        "x": 308.813361835,
+        "y": 213.213438538
+      },
+      "p_to": {
+        "x": 308.813361473,
+        "y": 213.213437535
+      },
+      "length_cm": 1.066e-06
+    },
+    {
+      "from_circle_id": 5,
+      "to_circle_id": 6,
+      "p_from": {
+        "x": 313.813361654,
+        "y": 191.963438036
+      },
+      "p_to": {
+        "x": 313.813361654,
+        "y": 191.963438036
+      },
+      "length_cm": 0.0
+    },
+    {
+      "from_circle_id": 6,
+      "to_circle_id": 7,
+      "p_from": {
+        "x": 317.739603362,
+        "y": 168.263849689
+      },
+      "p_to": {
+        "x": 317.739603362,
+        "y": 168.263849689
+      },
+      "length_cm": 0.0
+    },
+    {
+      "from_circle_id": 7,
+      "to_circle_id": 8,
+      "p_from": {
+        "x": 319.489603159,
+        "y": 147.013849958
+      },
+      "p_to": {
+        "x": 319.489603564,
+        "y": 147.013849419
+      },
+      "length_cm": 6.74e-07
+    },
+    {
+      "from_circle_id": 8,
+      "to_circle_id": 9,
+      "p_from": {
+        "x": 319.489603362,
+        "y": 122.986150311
+      },
+      "p_to": {
+        "x": 319.489603362,
+        "y": 122.986150311
+      },
+      "length_cm": 0.0
+    },
+    {
+      "from_circle_id": 9,
+      "to_circle_id": 10,
+      "p_from": {
+        "x": 317.739603206,
+        "y": 101.73615061
+      },
+      "p_to": {
+        "x": 317.739603517,
+        "y": 101.736150012
+      },
+      "length_cm": 6.74e-07
+    },
+    {
+      "from_circle_id": 10,
+      "to_circle_id": 11,
+      "p_from": {
+        "x": 313.813361897,
+        "y": 78.036562197
+      },
+      "p_to": {
+        "x": 313.81336141,
+        "y": 78.036561731
+      },
+      "length_cm": 6.74e-07
+    },
+    {
+      "from_circle_id": 11,
+      "to_circle_id": 12,
+      "p_from": {
+        "x": 308.813361514,
+        "y": 56.786562352
+      },
+      "p_to": {
+        "x": 308.813361794,
+        "y": 56.786561575
+      },
+      "length_cm": 8.26e-07
+    },
+    {
+      "from_circle_id": 12,
+      "to_circle_id": 13,
+      "p_from": {
+        "x": 290.0,
+        "y": 30.0
+      },
+      "p_to": {
+        "x": 250.0,
+        "y": 30.0
+      },
+      "length_cm": 40.0
+    },
+    {
+      "from_circle_id": 13,
+      "to_circle_id": 14,
+      "p_from": {
+        "x": 250.0,
+        "y": 70.0
+      },
+      "p_to": {
+        "x": 250.0,
+        "y": 70.0
+      },
+      "length_cm": 0.0
+    },
+    {
+      "from_circle_id": 14,
+      "to_circle_id": 15,
+      "p_from": {
+        "x": 262.990381057,
+        "y": 92.5
+      },
+      "p_to": {
+        "x": 262.990381057,
+        "y": 92.5
+      },
+      "length_cm": 0.0
+    },
+    {
+      "from_circle_id": 15,
+      "to_circle_id": 16,
+      "p_from": {
+        "x": 262.990381057,
+        "y": 107.5
+      },
+      "p_to": {
+        "x": 262.990381057,
+        "y": 107.5
+      },
+      "length_cm": 0.0
+    },
+    {
+      "from_circle_id": 16,
+      "to_circle_id": 17,
+      "p_from": {
+        "x": 262.990381057,
+        "y": 122.5
+      },
+      "p_to": {
+        "x": 262.990381057,
+        "y": 122.5
+      },
+      "length_cm": 0.0
+    },
+    {
+      "from_circle_id": 17,
+      "to_circle_id": 18,
+      "p_from": {
+        "x": 262.990381057,
+        "y": 137.5
+      },
+      "p_to": {
+        "x": 262.990381057,
+        "y": 137.5
+      },
+      "length_cm": 0.0
+    },
+    {
+      "from_circle_id": 18,
+      "to_circle_id": 19,
+      "p_from": {
+        "x": 262.990381057,
+        "y": 152.5
+      },
+      "p_to": {
+        "x": 262.990381057,
+        "y": 152.5
+      },
+      "length_cm": 0.0
+    },
+    {
+      "from_circle_id": 19,
+      "to_circle_id": 20,
+      "p_from": {
+        "x": 262.990381057,
+        "y": 167.5
+      },
+      "p_to": {
+        "x": 262.990381057,
+        "y": 167.5
+      },
+      "length_cm": 0.0
+    },
+    {
+      "from_circle_id": 20,
+      "to_circle_id": 21,
+      "p_from": {
+        "x": 262.990381057,
+        "y": 182.5
+      },
+      "p_to": {
+        "x": 262.990381057,
+        "y": 182.5
+      },
+      "length_cm": 0.0
+    },
+    {
+      "from_circle_id": 21,
+      "to_circle_id": 22,
+      "p_from": {
+        "x": 262.990381057,
+        "y": 197.5
+      },
+      "p_to": {
+        "x": 262.990381057,
+        "y": 197.5
+      },
+      "length_cm": 0.0
+    },
+    {
+      "from_circle_id": 22,
+      "to_circle_id": 23,
+      "p_from": {
+        "x": 250.0,
+        "y": 220.0
+      },
+      "p_to": {
+        "x": 235.0,
+        "y": 220.0
+      },
+      "length_cm": 15.0
+    },
+    {
+      "from_circle_id": 23,
+      "to_circle_id": 24,
+      "p_from": {
+        "x": 215.0,
+        "y": 200.0
+      },
+      "p_to": {
+        "x": 215.0,
+        "y": 155.0
+      },
+      "length_cm": 45.0
+    },
+    {
+      "from_circle_id": 24,
+      "to_circle_id": 25,
+      "p_from": {
+        "x": 200.0,
+        "y": 140.0
+      },
+      "p_to": {
+        "x": 90.0,
+        "y": 140.0
+      },
+      "length_cm": 110.0
+    },
+    {
+      "from_circle_id": 25,
+      "to_circle_id": 26,
+      "p_from": {
+        "x": 90.0,
+        "y": 90.0
+      },
+      "p_to": {
+        "x": 200.0,
+        "y": 90.0
+      },
+      "length_cm": 110.0
+    },
+    {
+      "from_circle_id": 26,
+      "to_circle_id": 27,
+      "p_from": {
+        "x": 210.0,
+        "y": 80.0
+      },
+      "p_to": {
+        "x": 210.0,
+        "y": 60.0
+      },
+      "length_cm": 20.0
+    },
+    {
+      "from_circle_id": 27,
+      "to_circle_id": 28,
+      "p_from": {
+        "x": 180.0,
+        "y": 30.0
+      },
+      "p_to": {
+        "x": 170.0,
+        "y": 30.0
+      },
+      "length_cm": 10.0
+    },
+    {
+      "from_circle_id": 28,
+      "to_circle_id": 29,
+      "p_from": {
+        "x": 155.0,
+        "y": 45.0
+      },
+      "p_to": {
+        "x": 155.0,
+        "y": 165.0
+      },
+      "length_cm": 120.0
+    },
+    {
+      "from_circle_id": 29,
+      "to_circle_id": 30,
+      "p_from": {
+        "x": 165.0,
+        "y": 175.0
+      },
+      "p_to": {
+        "x": 165.0,
+        "y": 175.0
+      },
+      "length_cm": 0.0
+    },
+    {
+      "from_circle_id": 30,
+      "to_circle_id": 31,
+      "p_from": {
+        "x": 175.0,
+        "y": 185.0
+      },
+      "p_to": {
+        "x": 175.0,
+        "y": 185.0
+      },
+      "length_cm": 0.0
+    },
+    {
+      "from_circle_id": 31,
+      "to_circle_id": 32,
+      "p_from": {
+        "x": 115.0,
+        "y": 185.0
+      },
+      "p_to": {
+        "x": 115.0,
+        "y": 185.0
+      },
+      "length_cm": 0.0
+    },
+    {
+      "from_circle_id": 32,
+      "to_circle_id": 33,
+      "p_from": {
+        "x": 125.0,
+        "y": 175.0
+      },
+      "p_to": {
+        "x": 125.0,
+        "y": 175.0
+      },
+      "length_cm": 0.0
+    },
+    {
+      "from_circle_id": 33,
+      "to_circle_id": 34,
+      "p_from": {
+        "x": 135.0,
+        "y": 165.0
+      },
+      "p_to": {
+        "x": 135.0,
+        "y": 45.0
+      },
+      "length_cm": 120.0
+    },
+    {
+      "from_circle_id": 34,
+      "to_circle_id": 35,
+      "p_from": {
+        "x": 120.0,
+        "y": 30.0
+      },
+      "p_to": {
+        "x": 105.0,
+        "y": 30.0
+      },
+      "length_cm": 15.0
+    },
+    {
+      "from_circle_id": 35,
+      "to_circle_id": 36,
+      "p_from": {
+        "x": 90.0,
+        "y": 32.303039929
+      },
+      "p_to": {
+        "x": 90.0,
+        "y": 32.303039929
+      },
+      "length_cm": 0.0
+    },
+    {
+      "from_circle_id": 36,
+      "to_circle_id": 37,
+      "p_from": {
+        "x": 60.0,
+        "y": 32.303039929
+      },
+      "p_to": {
+        "x": 60.0,
+        "y": 32.303039929
+      },
+      "length_cm": 0.0
+    },
+    {
+      "from_circle_id": 37,
+      "to_circle_id": 38,
+      "p_from": {
+        "x": 45.0,
+        "y": 30.0
+      },
+      "p_to": {
+        "x": 45.0,
+        "y": 30.0
+      },
+      "length_cm": 0.0
+    },
+    {
+      "from_circle_id": 38,
+      "to_circle_id": 0,
+      "p_from": {
+        "x": 30.0,
+        "y": 45.0
+      },
+      "p_to": {
+        "x": 30.0,
+        "y": 230.0
+      },
+      "length_cm": 185.0
+    }
+  ]
+}
