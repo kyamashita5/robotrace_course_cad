@@ -357,9 +357,19 @@ def _draw_start_goal_gate(
 
     direction = (segment.p_end - segment.p_start).normalized()
     left = direction.left_normal().normalized()
+    text_rotation_deg = start_goal_text_rotation_angle(segment)
+    coordinate_anchor_edge = start_goal_coordinate_anchor_edge(segment, text_rotation_deg)
     label_center = point + left * (START_GOAL_GATE_WIDTH_CM * 0.25)
     protected_text_rects.append(
-        add_centered_text(scene, label, label_center, FINAL_BLACK, START_GOAL_GATE_LABEL_PIXEL_SIZE, z=32)
+        add_centered_text(
+            scene,
+            label,
+            label_center,
+            FINAL_BLACK,
+            START_GOAL_GATE_LABEL_PIXEL_SIZE,
+            z=32,
+            rotation_deg=text_rotation_deg,
+        )
     )
     protected_text_rects.append(
         add_right_aligned_text(
@@ -369,6 +379,8 @@ def _draw_start_goal_gate(
             HELPER_MAGENTA,
             START_GOAL_GATE_COORD_PIXEL_SIZE,
             z=32,
+            rotation_deg=text_rotation_deg,
+            anchor_edge=coordinate_anchor_edge,
         )
     )
 
@@ -404,6 +416,59 @@ def start_goal_coordinate_anchor(point, segment):
     return point - left * (START_GOAL_GATE_WIDTH_CM / 2.0)
 
 
+def start_goal_text_rotation_angle(segment) -> float:
+    direction = (segment.p_end - segment.p_start).normalized()
+    left = direction.left_normal().normalized()
+    scene_angle = math.degrees(math.atan2(-left.y, left.x))
+    return readable_text_angle(scene_angle)
+
+
+def start_goal_coordinate_anchor_edge(segment, rotation_deg: float) -> str:
+    if not math.isclose(abs(rotation_deg), 90.0, abs_tol=1e-6):
+        return "right"
+
+    direction = (segment.p_end - segment.p_start).normalized()
+    inward = direction.left_normal().normalized()
+    inward_scene_y = -inward.y
+    if rotation_deg < 0.0:
+        return "left" if inward_scene_y < 0.0 else "right"
+    return "right" if inward_scene_y < 0.0 else "left"
+
+
+def readable_text_angle(angle_deg: float) -> float:
+    angle = angle_deg
+    while angle <= -180.0:
+        angle += 360.0
+    while angle > 180.0:
+        angle -= 360.0
+    if angle > 90.0:
+        angle -= 180.0
+    elif angle < -90.0:
+        angle += 180.0
+    if math.isclose(angle, 90.0, abs_tol=1e-6):
+        return -90.0
+    return angle
+
+
+def rotated_point(x: float, y: float, angle_deg: float) -> tuple[float, float]:
+    angle_rad = math.radians(angle_deg)
+    cos_a = math.cos(angle_rad)
+    sin_a = math.sin(angle_rad)
+    return x * cos_a - y * sin_a, x * sin_a + y * cos_a
+
+
+def position_text_item_by_local_anchor(
+    item: QGraphicsTextItem,
+    scene_anchor,
+    local_anchor_x: float,
+    local_anchor_y: float,
+    rotation_deg: float,
+) -> None:
+    rotated_x, rotated_y = rotated_point(local_anchor_x, local_anchor_y, rotation_deg)
+    item.setRotation(rotation_deg)
+    item.setPos(scene_anchor.x() - rotated_x, scene_anchor.y() - rotated_y)
+
+
 def add_centered_text(
     scene: QGraphicsScene,
     text: str,
@@ -411,6 +476,7 @@ def add_centered_text(
     color: QColor,
     pixel_size: int,
     z: float,
+    rotation_deg: float = 0.0,
 ) -> QRectF:
     item = QGraphicsTextItem()
     font = QFont("Arial")
@@ -423,7 +489,7 @@ def add_centered_text(
     item.setTextWidth(item.document().idealWidth())
     rect = item.boundingRect()
     scene_center = to_scene(center)
-    item.setPos(scene_center.x() - rect.width() / 2.0, scene_center.y() - rect.height() / 2.0)
+    position_text_item_by_local_anchor(item, scene_center, rect.width() / 2.0, rect.height() / 2.0, rotation_deg)
     item.setZValue(z)
     scene.addItem(item)
     return item.sceneBoundingRect()
@@ -436,6 +502,8 @@ def add_right_aligned_text(
     color: QColor,
     pixel_size: int,
     z: float,
+    rotation_deg: float = 0.0,
+    anchor_edge: str = "right",
 ) -> QRectF:
     item = QGraphicsTextItem()
     font = QFont("Arial")
@@ -446,12 +514,16 @@ def add_right_aligned_text(
     item.setPlainText(text)
     item.document().setDocumentMargin(0.0)
     text_option = QTextOption()
-    text_option.setAlignment(Qt.AlignmentFlag.AlignRight)
+    if anchor_edge == "left":
+        text_option.setAlignment(Qt.AlignmentFlag.AlignLeft)
+    else:
+        text_option.setAlignment(Qt.AlignmentFlag.AlignRight)
     item.document().setDefaultTextOption(text_option)
     item.setTextWidth(item.document().idealWidth())
     rect = item.boundingRect()
     scene_anchor = to_scene(anchor)
-    item.setPos(scene_anchor.x() - rect.width(), scene_anchor.y() - rect.height() / 2.0)
+    local_anchor_x = rect.left() if anchor_edge == "left" else rect.right()
+    position_text_item_by_local_anchor(item, scene_anchor, local_anchor_x, rect.center().y(), rotation_deg)
     item.setZValue(z)
     scene.addItem(item)
     return item.sceneBoundingRect()

@@ -28,9 +28,11 @@ from robotrace_course_cad.render.final_drawing_exporter import (
     label_rect_intersects_paths,
     line_label_protection_paths,
     occupied_grid_cells,
+    start_goal_coordinate_anchor_edge,
     start_goal_coordinate_anchor,
     start_goal_coordinate_text,
     start_goal_gate_points,
+    start_goal_text_rotation_angle,
     svg_pixel_size_for_mm,
 )
 from robotrace_course_cad.model.course_model import CourseModel, HelperCircle, Turn
@@ -173,6 +175,82 @@ class FinalDrawingExporterTest(unittest.TestCase):
 
         self.assertEqual((anchor.x, anchor.y), (-40.0, -20.0))
         self.assertAlmostEqual(rect.right(), anchor.x * 10.0)
+
+    def test_start_goal_text_is_horizontal_for_2025_alljapan_orientation(self) -> None:
+        model = load_course_model("examples/synthetic/2025alljapan.json")
+        solution = solve_course(model)
+
+        self.assertIsNotNone(solution.start_goal_segment)
+        self.assertAlmostEqual(start_goal_text_rotation_angle(solution.start_goal_segment), 0.0, delta=0.1)
+
+    def test_start_goal_text_rotates_when_area_is_sideways(self) -> None:
+        segment = StartGoalSegment(
+            center=Vec2(10.0, 0.0),
+            p_start=Vec2(-40.0, 0.0),
+            p_end=Vec2(60.0, 0.0),
+            tangent_angle_deg=0.0,
+            length=100.0,
+        )
+
+        self.assertAlmostEqual(start_goal_text_rotation_angle(segment), -90.0)
+
+    def test_start_goal_text_rotates_counterclockwise_for_reversed_sideways_area(self) -> None:
+        segment = StartGoalSegment(
+            center=Vec2(40.0, 10.0),
+            p_start=Vec2(50.0, 10.0),
+            p_end=Vec2(30.0, 10.0),
+            tangent_angle_deg=180.0,
+            length=20.0,
+        )
+        scene = QGraphicsScene()
+        anchor = start_goal_coordinate_anchor(segment.p_start, segment)
+
+        rect = add_right_aligned_text(
+            scene,
+            "50,10",
+            anchor,
+            Qt.GlobalColor.magenta,
+            39,
+            z=1,
+            rotation_deg=start_goal_text_rotation_angle(segment),
+        )
+
+        self.assertAlmostEqual(start_goal_text_rotation_angle(segment), -90.0)
+        self.assertLessEqual(rect.top(), -10.0 * 10.0)
+        self.assertGreaterEqual(rect.bottom(), -30.0 * 10.0)
+
+    def test_start_goal_coordinate_text_stays_inside_2019_sideways_gate(self) -> None:
+        model = load_course_model("examples/synthetic/2019alljapan.json")
+        solution = solve_course(model)
+        segment = solution.start_goal_segment
+        scene = QGraphicsScene()
+        angle = start_goal_text_rotation_angle(segment)
+        anchor = start_goal_coordinate_anchor(segment.p_start, segment)
+
+        rect = add_right_aligned_text(
+            scene,
+            start_goal_coordinate_text(segment.p_start),
+            anchor,
+            Qt.GlobalColor.magenta,
+            39,
+            z=1,
+            rotation_deg=angle,
+            anchor_edge=start_goal_coordinate_anchor_edge(segment, angle),
+        )
+
+        gate_points = start_goal_gate_points(segment.p_start, segment)
+        gate_scene_xs = [point.x * 10.0 for point in gate_points]
+        gate_scene_ys = [-point.y * 10.0 for point in gate_points]
+        gate_rect = QRectF(
+            min(gate_scene_xs),
+            min(gate_scene_ys),
+            max(gate_scene_xs) - min(gate_scene_xs),
+            max(gate_scene_ys) - min(gate_scene_ys),
+        )
+
+        self.assertEqual(start_goal_coordinate_anchor_edge(segment, angle), "left")
+        self.assertGreaterEqual(rect.top(), gate_rect.top())
+        self.assertLessEqual(rect.bottom(), gate_rect.bottom())
 
     def test_a4_svg_size_uses_physical_page_pixels(self) -> None:
         size = svg_pixel_size_for_mm(297.0, 210.0)

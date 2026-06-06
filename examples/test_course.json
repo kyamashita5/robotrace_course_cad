@@ -1,0 +1,64 @@
+{
+  "board": {
+    "width_cm": 360.0,
+    "height_cm": 180.0
+  },
+  "line_width_cm": 1.9,
+  "min_edge_margin_cm": 20.0,
+  "radius_presets_cm": [
+    10.0,
+    15.0,
+    20.0,
+    25.0,
+    30.0,
+    40.0,
+    50.0
+  ],
+  "start_goal_hint": {
+    "x": 40.0,
+    "y": 10.0,
+    "length": 20.0
+  },
+  "circles": [
+    {
+      "id": 0,
+      "x": 20.0,
+      "y": 20.0,
+      "r": 10.0,
+      "turn": "cw",
+      "locked": false
+    },
+    {
+      "id": 1,
+      "x": 20.0,
+      "y": 70.0,
+      "r": 10.0,
+      "turn": "cw",
+      "locked": false
+    },
+    {
+      "id": 2,
+      "x": 40.0,
+      "y": 40.0,
+      "r": 10.0,
+      "turn": "ccw",
+      "locked": false
+    },
+    {
+      "id": 4,
+      "x": 65.0,
+      "y": 66.5,
+      "r": 10.0,
+      "turn": "ccw",
+      "locked": false
+    },
+    {
+      "id": 3,
+      "x": 60.0,
+      "y": 30.0,
+      "r": 20.0,
+      "turn": "cw",
+      "locked": false
+    }
+  ]
+}
