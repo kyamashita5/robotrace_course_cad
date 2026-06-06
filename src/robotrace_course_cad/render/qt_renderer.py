@@ -23,11 +23,12 @@ def from_scene(point: QPointF) -> Vec2:
 
 
 class HelperCircleItem(QGraphicsEllipseItem):
-    def __init__(self, circle: HelperCircle, on_changed, selected: bool = False):
+    def __init__(self, circle: HelperCircle, on_changed, on_selected=None, selected: bool = False):
         r = circle.r * CM_TO_SCENE
         super().__init__(-r, -r, 2 * r, 2 * r)
         self.circle = circle
         self.on_changed = on_changed
+        self.on_selected = on_selected
         self.setPos(to_scene(circle.center))
         self.setFlag(QGraphicsItem.ItemIsMovable, not circle.locked)
         self.setFlag(QGraphicsItem.ItemIsSelectable, True)
@@ -44,6 +45,11 @@ class HelperCircleItem(QGraphicsEllipseItem):
         elif change == QGraphicsItem.ItemSelectedHasChanged:
             self._apply_selection_style(bool(value))
         return super().itemChange(change, value)
+
+    def mousePressEvent(self, event):
+        super().mousePressEvent(event)
+        if self.on_selected is not None:
+            self.on_selected(self.circle)
 
     def mouseReleaseEvent(self, event):
         super().mouseReleaseEvent(event)
@@ -63,6 +69,7 @@ def render_course(
     model: CourseModel,
     solution: CourseSolution,
     on_circle_changed,
+    on_circle_selected=None,
     selected_circle_id: int | None = None,
 ) -> None:
     scene.clear()
@@ -75,7 +82,7 @@ def render_course(
     _draw_corner_markers(scene, solution)
     _draw_start_goal_markers(scene, solution)
     _draw_helper_connections(scene, model)
-    _draw_helper_circles(scene, model, on_circle_changed, selected_circle_id)
+    _draw_helper_circles(scene, model, on_circle_changed, on_circle_selected, selected_circle_id)
     _draw_start_goal_hint(scene, model)
 
 
@@ -374,10 +381,16 @@ def _draw_helper_circles(
     scene: QGraphicsScene,
     model: CourseModel,
     on_circle_changed,
+    on_circle_selected,
     selected_circle_id: int | None,
 ) -> None:
     for index, circle in enumerate(model.circles):
-        item = HelperCircleItem(circle, on_circle_changed, selected=circle.id == selected_circle_id)
+        item = HelperCircleItem(
+            circle,
+            on_circle_changed,
+            on_selected=on_circle_selected,
+            selected=circle.id == selected_circle_id,
+        )
         scene.addItem(item)
 
         center = to_scene(circle.center)

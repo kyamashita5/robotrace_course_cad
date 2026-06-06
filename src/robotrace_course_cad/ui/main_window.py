@@ -198,6 +198,7 @@ class MainWindow(QMainWindow):
             self.model,
             self.solution,
             self.on_circle_dragged,
+            on_circle_selected=self.on_circle_selected_in_scene,
             selected_circle_id=selected_circle_id,
         )
 
@@ -486,7 +487,15 @@ class MainWindow(QMainWindow):
         if not self._updating_table:
             self.refresh_scene()
 
+    def on_circle_selected_in_scene(self, circle: HelperCircle) -> None:
+        for row, candidate in enumerate(self.model.circles):
+            if candidate.id == circle.id:
+                if self.table.currentRow() != row:
+                    self.table.selectRow(row)
+                return
+
     def on_circle_dragged(self, circle: HelperCircle) -> None:
+        self.on_circle_selected_in_scene(circle)
         self.solution = solve_course(self.model)
         self.populate_table()
         self.refresh_scene()
