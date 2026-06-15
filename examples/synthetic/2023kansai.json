@@ -1,0 +1,198 @@
+{
+  "board": {
+    "width_cm": 360.0,
+    "height_cm": 180.0
+  },
+  "line_width_cm": 1.9,
+  "min_edge_margin_cm": 20.0,
+  "grid": {
+    "origin_x_cm": 0.0,
+    "origin_y_cm": 0.0,
+    "cell_width_cm": 90.0,
+    "cell_height_cm": 135.0
+  },
+  "radius_presets_cm": [
+    10.0,
+    15.0,
+    20.0,
+    25.0,
+    30.0,
+    40.0,
+    50.0
+  ],
+  "start_goal_hint": {
+    "x": 320.0,
+    "y": 105.0,
+    "length": 100.0
+  },
+  "circles": [
+    {
+      "id": 0,
+      "x": 300.0,
+      "y": 40.0,
+      "r": 20.0,
+      "turn": "cw",
+      "locked": false
+    },
+    {
+      "id": 1,
+      "x": 260.0,
+      "y": 40.0,
+      "r": 20.0,
+      "turn": "ccw",
+      "locked": false
+    },
+    {
+      "id": 2,
+      "x": 220.0,
+      "y": 40.0,
+      "r": 20.0,
+      "turn": "ccw",
+      "locked": false
+    },
+    {
+      "id": 3,
+      "x": 220.0,
+      "y": 95.0,
+      "r": 20.0,
+      "turn": "ccw",
+      "locked": false
+    },
+    {
+      "id": 4,
+      "x": 182.91903934194937,
+      "y": 110.00007855566437,
+      "r": 20.0,
+      "turn": "cw",
+      "locked": false
+    },
+    {
+      "id": 5,
+      "x": 45.0,
+      "y": 70.0,
+      "r": 20.0,
+      "turn": "ccw",
+      "locked": false
+    },
+    {
+      "id": 6,
+      "x": 40.0,
+      "y": 60.0,
+      "r": 15.0,
+      "turn": "ccw",
+      "locked": false
+    },
+    {
+      "id": 7,
+      "x": 100.0,
+      "y": 65.0,
+      "r": 20.0,
+      "turn": "ccw",
+      "locked": false
+    },
+    {
+      "id": 8,
+      "x": 90.0,
+      "y": 120.0,
+      "r": 30.0,
+      "turn": "ccw",
+      "locked": false
+    },
+    {
+      "id": 9,
+      "x": 40.0,
+      "y": 170.0,
+      "r": 20.0,
+      "turn": "cw",
+      "locked": false
+    },
+    {
+      "id": 10,
+      "x": 35.0,
+      "y": 230.0,
+      "r": 15.0,
+      "turn": "cw",
+      "locked": false
+    },
+    {
+      "id": 11,
+      "x": 70.0,
+      "y": 265.0,
+      "r": 20.0,
+      "turn": "ccw",
+      "locked": false
+    },
+    {
+      "id": 12,
+      "x": 89.365748829199,
+      "y": 230.00046039896557,
+      "r": 20.0,
+      "turn": "cw",
+      "locked": false
+    },
+    {
+      "id": 13,
+      "x": 160.63425117080098,
+      "y": 230.00046039896557,
+      "r": 20.0,
+      "turn": "cw",
+      "locked": false
+    },
+    {
+      "id": 14,
+      "x": 180.0,
+      "y": 265.0,
+      "r": 20.0,
+      "turn": "ccw",
+      "locked": false
+    },
+    {
+      "id": 15,
+      "x": 199.36574882919902,
+      "y": 230.00046039896557,
+      "r": 20.0,
+      "turn": "cw",
+      "locked": false
+    },
+    {
+      "id": 16,
+      "x": 270.634251170801,
+      "y": 230.00046039896557,
+      "r": 20.0,
+      "turn": "cw",
+      "locked": false
+    },
+    {
+      "id": 17,
+      "x": 290.0,
+      "y": 265.0,
+      "r": 20.0,
+      "turn": "ccw",
+      "locked": false
+    },
+    {
+      "id": 18,
+      "x": 325.0,
+      "y": 230.0,
+      "r": 15.0,
+      "turn": "cw",
+      "locked": false
+    },
+    {
+      "id": 19,
+      "x": 255.0,
+      "y": 200.0,
+      "r": 15.0,
+      "turn": "ccw",
+      "locked": false
+    },
+    {
+      "id": 20,
+      "x": 305.0,
+      "y": 170.0,
+      "r": 15.0,
+      "turn": "cw",
+      "locked": false
+    }
+  ]
+}
