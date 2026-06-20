@@ -1,6 +1,6 @@
 ---
 name: course_image_parser
-description: "Use when analyzing robotrace course diagram images in this repository to determine board contour, board size, and start/goal candidates by combining scripted detection with AI image analysis and text reading, then stopping for user confirmation before helper-circle extraction or JSON creation."
+description: "Use when analyzing robotrace course diagram images in this repository to determine board contour, board size, start/goal candidates, and a first centerline point sequence by combining scripted detection with AI image analysis and text reading, then stopping for user confirmation before helper-circle extraction or JSON creation."
 ---
 
 # Course Image Parser
@@ -10,13 +10,14 @@ Use this skill in the `robotrace_course_cad` repository when the user wants to r
 - board contour detection and normalization
 - board size identification
 - start/goal candidate detection
+- centerline mask extraction and point-sequence tracing
 - cross-checking scripted detections against image text and visual evidence
 
 This skill covers only the first parsing stage. Later stages such as helper-circle extraction, turn-direction confirmation, coordinate completion, and JSON generation are intentionally out of scope for now and should be treated as TBD.
 
 ## Stop Rule
 
-After finishing the board analysis and start/goal analysis described below, stop and ask the user how to proceed.
+After finishing the board analysis, start/goal analysis, and centerline point-sequence extraction described below, stop and ask the user how to proceed.
 
 Do not continue to helper-circle ordering, `cw` / `ccw` determination, coordinate completion, or JSON creation unless the user explicitly instructs you to continue after reviewing the intermediate results.
 
@@ -141,7 +142,45 @@ When text is weak, partially occluded, or absent, use a confidence statement suc
 - image text suggests a different location than the scripted top candidate
 - multiple candidates remain viable
 
-### 5. Produce a user-facing intermediate report
+### 5. Extract a centerline mask and point sequence
+
+Only do this step after one board interpretation and one start/goal interpretation are good enough to use as inputs.
+
+Run the point-tracing script with confirmed `START` and `GOAL` coordinates.
+
+```bash
+uv run --project course_image_parser python course_image_parser/trace_centerline_points.py data/<name>.png --start-cm <start_x>,<start_y> --goal-cm <goal_x>,<goal_y>
+```
+
+Treat this as a structured first-pass centerline extraction, not as final geometry truth.
+
+The expected mask-generation and tracing behavior is:
+
+- start from the normalized board image
+- extract dark line pixels while excluding colored overlays such as cyan, magenta, and yellow using HSV-based filtering
+- clean the line mask with the current default morphology sequence
+	- opening side: `open-erode-size=5`, `open-dilate-size=5`
+	- closing side: `close-dilate-size=5`, `close-erode-size=5`
+- thin the cleaned mask to a one-pixel-like skeleton
+- place a virtual line tracer at `START`
+- initialize the departure direction from the confirmed `GOAL -> START` side of the start/goal segment
+- when the next point is not found at `1cm ± ε`, retry at `2cm ± ε`, then `3cm ± ε`, up to `5cm ± ε`
+- at each retry distance, keep the heading constraint and prefer the candidate whose direction is closest to the current tracer heading
+- update heading from a weighted fit of the most recent 5 points, with newer points weighted more strongly
+- before 5 actual points exist, seed the fit history with virtual points extending backward along the `GOAL -> START` direction
+
+Inspect the generated artifacts:
+
+- raw line mask
+- cleaned line mask
+- skeleton mask
+- trace overlay on the normalized image
+- traced point list TSV
+- trace report JSON
+
+If the trace fails to reach the goal or visibly leaves the line, do not silently start broad parameter exploration. Report where and how it failed, then ask the user before changing tracing or morphology parameters beyond the current confirmed defaults.
+
+### 6. Produce a user-facing intermediate report
 
 Before any later-stage parsing, summarize the current state for each image.
 
@@ -152,6 +191,8 @@ Report at least:
 - top 1 to 3 start/goal candidates
 - evidence used for each candidate
 - endpoint labeling and the chosen departure direction from `START`
+- whether the centerline trace reached the goal
+- whether the trace overlay visually stays on the course centerline
 - any mismatches between scripted detection and image text reading
 - what remains uncertain
 
@@ -161,16 +202,20 @@ When available, point the user to generated artifacts such as:
 - board-detection report
 - start/goal candidate overlay
 - start/goal report JSON
+- centerline trace overlay
+- centerline point TSV
+- centerline trace report JSON
 
-### 6. Mandatory pause
+### 7. Mandatory pause
 
 Stop after reporting the intermediate findings.
 
 Ask the user whether to:
 
 1. accept one board interpretation and one start/goal candidate
-2. review ambiguous candidates together
-3. continue to the later parsing stages once those decisions are fixed
+2. accept the current centerline point sequence or review its failure points
+3. review ambiguous candidates together
+4. continue to the later parsing stages once those decisions are fixed
 
 Do not continue automatically past this checkpoint.
 
@@ -183,6 +228,9 @@ Before stopping, make sure all of the following are true:
 - start/goal candidates were generated from the scripted detector
 - AI image analysis was used to inspect candidate regions, not only the whole image
 - any visible text or coordinate labels were compared against the scripted candidates
+- the centerline mask excluded colored overlay lines before morphology
+- the tracer used the confirmed `GOAL -> START` departure direction at `START`
+- the centerline trace outcome was reviewed in overlay form, not only by numeric report
 - unresolved conflicts were reported to the user
 - the workflow stopped before helper-circle extraction or JSON creation
 
@@ -191,4 +239,4 @@ Before stopping, make sure all of the following are true:
 - Prefer the dedicated `course_image_parser` environment over the CAD runtime environment for image-analysis work.
 - If multiple batch results exist, compare them consistently per image rather than mixing outputs from different runs.
 - If a prior `*_notes.md` file exists and the user provides corrections, update that notes file before moving to any later stage.
-- Future stages are TBD by design. This skill currently ends after board and start/goal interpretation.
+- Future stages are TBD by design. This skill currently ends after board interpretation, start/goal interpretation, and one centerline point-sequence pass.
