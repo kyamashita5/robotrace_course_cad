@@ -1,0 +1,16 @@
+[project]
+name = "robotrace-course-image-parser"
+version = "0.1.0"
+description = "Dedicated uv-managed environment for course image parsing experiments."
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.26",
+    "opencv-python>=4.10",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.uv]
+package = false
