@@ -89,6 +89,14 @@ def heading_to_degrees(heading: np.ndarray) -> float:
     return math.degrees(math.atan2(float(heading[1]), float(heading[0])))
 
 
+def heading_degrees_between(p0_cm: tuple[float, float], p1_cm: tuple[float, float], fallback_deg: float) -> float:
+    dx = p1_cm[0] - p0_cm[0]
+    dy = p1_cm[1] - p0_cm[1]
+    if math.hypot(dx, dy) <= 1e-9:
+        return fallback_deg
+    return math.degrees(math.atan2(dy, dx))
+
+
 def normalize_vector(vector: np.ndarray) -> np.ndarray:
     norm = float(np.linalg.norm(vector))
     if norm <= 1e-6:
@@ -401,8 +409,99 @@ def save_trace_points(path: Path, trace: TraceResult) -> None:
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def save_report(path: Path, trace: TraceResult, start_cm: tuple[float, float], goal_cm: tuple[float, float]) -> None:
+def ensure_confirmed_endpoints(
+    trace: TraceResult,
+    start_cm: tuple[float, float],
+    goal_cm: tuple[float, float],
+    board_height_cm: float,
+    px_per_cm: int,
+    eps_cm: float = 1e-6,
+) -> tuple[TraceResult, bool, bool]:
+    points = list(trace.points)
+    inserted_start = False
+    appended_goal = False
+
+    def distance_to_cm(point: TracePoint, target_cm: tuple[float, float]) -> float:
+        return math.hypot(point.x_cm - target_cm[0], point.y_cm - target_cm[1])
+
+    if not points or distance_to_cm(points[0], start_cm) > eps_cm:
+        start_xy = cm_to_image_px(start_cm, board_height_cm, px_per_cm)
+        heading_deg = points[0].heading_deg if points else heading_degrees_between(goal_cm, start_cm, 0.0)
+        if points:
+            heading_deg = heading_degrees_between(start_cm, (points[0].x_cm, points[0].y_cm), heading_deg)
+        points.insert(
+            0,
+            TracePoint(
+                index=0,
+                x_px=float(start_xy[0]),
+                y_px=float(start_xy[1]),
+                x_cm=round(start_cm[0], 4),
+                y_cm=round(start_cm[1], 4),
+                heading_deg=round(heading_deg, 4),
+            ),
+        )
+        inserted_start = True
+
+    if not points or distance_to_cm(points[-1], goal_cm) > eps_cm:
+        goal_xy = cm_to_image_px(goal_cm, board_height_cm, px_per_cm)
+        heading_deg = heading_degrees_between((points[-1].x_cm, points[-1].y_cm), goal_cm, points[-1].heading_deg)
+        points.append(
+            TracePoint(
+                index=len(points),
+                x_px=float(goal_xy[0]),
+                y_px=float(goal_xy[1]),
+                x_cm=round(goal_cm[0], 4),
+                y_cm=round(goal_cm[1], 4),
+                heading_deg=round(heading_deg, 4),
+            )
+        )
+        appended_goal = True
+
+    reindexed: list[TracePoint] = []
+    for index, point in enumerate(points):
+        reindexed.append(
+            TracePoint(
+                index=index,
+                x_px=point.x_px,
+                y_px=point.y_px,
+                x_cm=point.x_cm,
+                y_cm=point.y_cm,
+                heading_deg=point.heading_deg,
+            )
+        )
+
+    travel_cm = 0.0
+    for previous, current in zip(reindexed[:-1], reindexed[1:]):
+        travel_cm += math.hypot(current.x_cm - previous.x_cm, current.y_cm - previous.y_cm)
+    return (
+        TraceResult(
+            points=reindexed,
+            reached_goal=trace.reached_goal,
+            goal_distance_px=0.0,
+            travel_cm=travel_cm,
+            snapped_start_px=trace.snapped_start_px,
+            snapped_goal_px=trace.snapped_goal_px,
+        ),
+        inserted_start,
+        appended_goal,
+    )
+
+
+def save_report(
+    path: Path,
+    trace: TraceResult,
+    start_cm: tuple[float, float],
+    goal_cm: tuple[float, float],
+    board_width_cm: float,
+    board_height_cm: float,
+    inserted_start_point: bool = False,
+    appended_goal_point: bool = False,
+) -> None:
     payload = {
+        "board": {
+            "width_cm": board_width_cm,
+            "height_cm": board_height_cm,
+        },
         "start_cm": [start_cm[0], start_cm[1]],
         "goal_cm": [goal_cm[0], goal_cm[1]],
         "snapped_start_px": [round(trace.snapped_start_px[0], 3), round(trace.snapped_start_px[1], 3)],
@@ -411,6 +510,8 @@ def save_report(path: Path, trace: TraceResult, start_cm: tuple[float, float], g
         "travel_cm": trace.travel_cm,
         "reached_goal": trace.reached_goal,
         "goal_distance_px": trace.goal_distance_px,
+        "inserted_start_point": inserted_start_point,
+        "appended_goal_point": appended_goal_point,
     }
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
@@ -456,6 +557,13 @@ def main() -> None:
         max_points=args.max_points,
         recent_exclusion_points=args.recent_exclusion_points,
     )
+    trace, inserted_start_point, appended_goal_point = ensure_confirmed_endpoints(
+        trace,
+        start_cm=start_cm,
+        goal_cm=goal_cm,
+        board_height_cm=board_height_cm,
+        px_per_cm=px_per_cm,
+    )
 
     overlay = render_overlay(normalized, trace, start_xy, goal_xy)
     cv2.imwrite(str(target / "normalized.png"), normalized)
@@ -464,7 +572,16 @@ def main() -> None:
     cv2.imwrite(str(target / "skeleton_mask.png"), skeleton_mask)
     cv2.imwrite(str(target / "trace_overlay.png"), overlay)
     save_trace_points(target / "trace_points.tsv", trace)
-    save_report(target / "report.json", trace, start_cm, goal_cm)
+    save_report(
+        target / "report.json",
+        trace,
+        start_cm,
+        goal_cm,
+        board_width_cm,
+        board_height_cm,
+        inserted_start_point,
+        appended_goal_point,
+    )
 
     if not trace.reached_goal:
         raise RuntimeError(f"goal not reached; last point is {trace.goal_distance_px:.2f}px from goal")

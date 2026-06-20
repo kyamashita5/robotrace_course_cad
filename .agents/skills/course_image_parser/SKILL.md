@@ -1,6 +1,6 @@
 ---
 name: course_image_parser
-description: "Use when analyzing robotrace course diagram images in this repository to determine board contour, board size, start/goal candidates, and a first centerline point sequence by combining scripted detection with AI image analysis and text reading, then stopping for user confirmation before helper-circle extraction or JSON creation."
+description: "Use when analyzing robotrace course diagram images in this repository to determine board contour, board size, start/goal candidates, a centerline point sequence, and line/arc plus helper-circle CAD JSON candidates."
 ---
 
 # Course Image Parser
@@ -11,15 +11,16 @@ Use this skill in the `robotrace_course_cad` repository when the user wants to r
 - board size identification
 - start/goal candidate detection
 - centerline mask extraction and point-sequence tracing
+- line/arc fitting and helper-circle CAD JSON candidate generation
 - cross-checking scripted detections against image text and visual evidence
 
-This skill covers only the first parsing stage. Later stages such as helper-circle extraction, turn-direction confirmation, coordinate completion, and JSON generation are intentionally out of scope for now and should be treated as TBD.
+This skill covers the scripted path through first-pass line/arc fitting and Course CAD-readable helper-circle JSON candidate generation. Manual geometry repair, final helper-circle editing, and final race-ready JSON approval remain review steps after the generated artifacts are inspected.
 
 ## Stop Rule
 
-After finishing the board analysis, start/goal analysis, and centerline point-sequence extraction described below, stop and ask the user how to proceed.
+After finishing board analysis, start/goal analysis, centerline point-sequence extraction, line/arc fitting, and helper-circle CAD JSON candidate generation described below, stop and ask the user how to proceed.
 
-Do not continue to helper-circle ordering, `cw` / `ccw` determination, coordinate completion, or JSON creation unless the user explicitly instructs you to continue after reviewing the intermediate results.
+Do not continue to manual helper-circle repair, turn-direction changes, coordinate completion, or final JSON approval unless the user explicitly instructs you to continue after reviewing the generated artifacts.
 
 ## Environment
 
@@ -168,6 +169,9 @@ The expected mask-generation and tracing behavior is:
 - at each retry distance, keep the heading constraint and prefer the candidate whose direction is closest to the current tracer heading
 - update heading from a weighted fit of the most recent 5 points, with newer points weighted more strongly
 - before 5 actual points exist, seed the fit history with virtual points extending backward along the `GOAL -> START` direction
+- include the confirmed `START` point as the first TSV point if it is not already present
+- include the confirmed `GOAL` point as the last TSV point if it is not already present
+- write board dimensions, confirmed endpoints, and endpoint-insertion flags to the trace report
 
 Inspect the generated artifacts:
 
@@ -180,9 +184,98 @@ Inspect the generated artifacts:
 
 If the trace fails to reach the goal or visibly leaves the line, do not silently start broad parameter exploration. Report where and how it failed, then ask the user before changing tracing or morphology parameters beyond the current confirmed defaults.
 
-### 6. Produce a user-facing intermediate report
+### 6. Fit line/arc path and generate helper-circle CAD JSON
 
-Before any later-stage parsing, summarize the current state for each image.
+If the board interpretation, start/goal interpretation, and centerline trace look acceptable, continue automatically to line/arc fitting.
+
+```bash
+uv run --project course_image_parser python course_image_parser/line_arc_path_fitting.py tmp/centerline_trace/<name>/trace_points.tsv --write-svg
+```
+
+If the trace was written to a non-default output directory, use that TSV path instead.
+
+The fitting script automatically reads the sibling `report.json` for:
+
+- confirmed `START` / `GOAL` coordinates
+- board width and height
+- start/goal hint information for the CAD JSON
+
+Expected fitting behavior:
+
+- preprocess by duplicate removal and 2 cm resampling
+- build split candidates from RDP, curvature, neighboring points, and spacing constraints
+- solve a tangent-aware DAG over segment hypotheses
+- constrain any segment starting at the first point or ending at the final point to lie on the confirmed `START`-`GOAL` line
+- keep tangent mismatch free below `3 deg`, strongly penalize mismatch above `5 deg`, and hard-reject transitions at `10 deg` or above by default
+- penalize segments at or below the preferred `8 cm` threshold without hard-rejecting them by default
+- fit arc candidates with radii `R10 cm` or larger in `5 cm` increments
+- for each quantized radius, compute the two possible centers from the interval endpoints and choose the center with the smallest radius residual
+
+Expected outputs:
+
+- `line_arc_segments.json`: fitted line/arc segment model with diagnostics
+- `line_arc_segments.tsv`: tabular segment list
+- `line_arc_connections.tsv`: tangent mismatch report at adopted segment joints
+- `line_arc_segments.svg`: debug visualization
+- `course_cad_model.json`: Course CAD-readable helper-circle candidate model
+
+Read the SVG as follows:
+
+- pale gray polyline: traced source points
+- blue dots: candidate split points
+- green segments: adopted line segments
+- orange segments: adopted arc segments
+- short black strokes: segment endpoint tangents
+- yellow/red joint dots: nonzero tangent mismatch; hover in a browser to see the angle
+
+### 7. Review helper-circle CAD JSON
+
+The fitting script writes `course_cad_model.json` by converting each fitted arc to a helper circle.
+
+Default helper-circle behavior:
+
+- `clockwise=True` arcs become `turn: "cw"`
+- counterclockwise arcs become `turn: "ccw"`
+- `start_goal_hint` is generated from the confirmed `START` / `GOAL` midpoint and length
+- board dimensions come from the trace report when available
+- helper-circle postprocessing is enabled by default
+
+The helper-circle postprocessing is intentionally applied only to the CAD JSON, not to the line/arc debug outputs.
+
+For consecutive arc runs, postprocessing does the following:
+
+- treat the first circle in a run as fixed
+- apply Fit Touch-equivalent center adjustment sequentially to 1-based positions `2, 3, 4, ..., N-1`
+- apply Fit Prev-equivalent center adjustment to the `N`th circle
+- if the `N`th circle is the final helper circle in the course, place it analytically so it touches both the previous circle and the confirmed `START`-`GOAL` line
+- use a tiny positive numerical slack (`1e-10 cm`) so Course CAD's tangent solver sees a zero-length-like valid tangent without creating short-tangent warnings
+
+Disable helper-circle postprocessing only for comparison/debugging:
+
+```bash
+uv run --project course_image_parser python course_image_parser/line_arc_path_fitting.py tmp/centerline_trace/<name>/trace_points.tsv --no-adjust-touching-helper-circles
+```
+
+Validate that the generated Course CAD JSON loads and summarize solver issues:
+
+```bash
+PYTHONPATH=src python - <<'PY'
+from robotrace_course_cad.io.json_io import load_course_model
+from robotrace_course_cad.solver.course_solver import solve_course
+
+model = load_course_model("tmp/line_arc_path_fitting/<name>/course_cad_model.json")
+solution = solve_course(model)
+print(len(model.circles), "helper circles")
+for issue in solution.issues:
+    print(issue.severity, issue.message)
+PY
+```
+
+Treat the generated CAD JSON as a candidate, not final truth. If Course CAD reports residual short arcs, intersections, or visually incorrect helper circles, report those issues and stop for user review.
+
+### 8. Produce a user-facing intermediate report
+
+Before any manual repair or final JSON approval, summarize the current state for each image.
 
 Report at least:
 
@@ -205,17 +298,20 @@ When available, point the user to generated artifacts such as:
 - centerline trace overlay
 - centerline point TSV
 - centerline trace report JSON
+- line/arc fit JSON, TSV, connection TSV, and SVG
+- Course CAD-readable `course_cad_model.json`
+- Course CAD solver issue summary
 
-### 7. Mandatory pause
+### 9. Mandatory pause
 
-Stop after reporting the intermediate findings.
+Stop after reporting the fitted line/arc and helper-circle CAD JSON findings.
 
 Ask the user whether to:
 
 1. accept one board interpretation and one start/goal candidate
 2. accept the current centerline point sequence or review its failure points
 3. review ambiguous candidates together
-4. continue to the later parsing stages once those decisions are fixed
+4. review or manually repair the generated helper-circle CAD JSON
 
 Do not continue automatically past this checkpoint.
 
@@ -230,13 +326,19 @@ Before stopping, make sure all of the following are true:
 - any visible text or coordinate labels were compared against the scripted candidates
 - the centerline mask excluded colored overlay lines before morphology
 - the tracer used the confirmed `GOAL -> START` departure direction at `START`
+- the traced TSV includes the confirmed `START` and `GOAL` as first and last points after endpoint insertion
 - the centerline trace outcome was reviewed in overlay form, not only by numeric report
+- arc radii in `line_arc_segments.json` are `R10 cm` or larger and multiples of `5 cm` unless `--no-quantize-arc-radius` was used
+- start-touching and goal-touching candidate segments were constrained to the confirmed `START`-`GOAL` line
+- `course_cad_model.json` loads with `load_course_model`
+- Course CAD solver issues were summarized, especially `No tangent candidate`, short tangent, short arc, and intersection messages
+- helper-circle Fit Touch postprocessing was left enabled unless the user requested a comparison
 - unresolved conflicts were reported to the user
-- the workflow stopped before helper-circle extraction or JSON creation
+- the workflow stopped before manual helper-circle repair or final JSON approval
 
 ## Notes
 
 - Prefer the dedicated `course_image_parser` environment over the CAD runtime environment for image-analysis work.
 - If multiple batch results exist, compare them consistently per image rather than mixing outputs from different runs.
 - If a prior `*_notes.md` file exists and the user provides corrections, update that notes file before moving to any later stage.
-- Future stages are TBD by design. This skill currently ends after board interpretation, start/goal interpretation, and one centerline point-sequence pass.
+- The scripted workflow ends after line/arc fitting and helper-circle CAD JSON candidate generation. Continue to manual geometry repair or final JSON approval only after user review.
