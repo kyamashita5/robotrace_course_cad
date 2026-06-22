@@ -554,15 +554,21 @@ def match_design_item(
     detections: list[DetectionCircle],
     args: argparse.Namespace,
     trace_points: np.ndarray | None,
+    excluded_detection_ranks: set[int] | None = None,
 ) -> tuple[MatchResult | None, str]:
     matches: list[MatchResult] = []
     if not item.xys:
         if item.info_xy is None:
             return None, "xy is null and info_xy is missing"
+        available_detections = (
+            detections
+            if not excluded_detection_ranks
+            else [detection for detection in detections if detection.rank not in excluded_detection_ranks]
+        )
         for radius_hypothesis in item.radii:
             radius = float(radius_hypothesis.value)
             for detection, center_distance, radius_delta, cost, support_length, support_ok in best_matches(
-                detections,
+                available_detections,
                 item.info_xy,
                 radius,
                 args.radius_only_center_threshold_cm,
@@ -593,6 +599,8 @@ def match_design_item(
                 )
         if matches:
             return min(matches, key=lambda match: match.match_cost), ""
+        if excluded_detection_ranks:
+            return None, "no support-circle detection matched any radius hypothesis near info_xy after excluding exact-text matches"
         return None, "no support-circle detection matched any radius hypothesis near info_xy"
 
     unique = len(item.xys) == 1 and len(item.radii) == 1
@@ -1125,14 +1133,26 @@ def main() -> None:
         slalom_candidates = load_slalom_candidates(slalom_report, args.max_slalom_candidates)
     trace_points = load_trace_points(Path(args.trace_points_tsv)) if args.trace_points_tsv else None
 
-    matches: list[MatchResult] = []
+    matches_by_index: dict[int, MatchResult] = {}
     failures: list[dict[str, Any]] = []
-    for item in design_items:
+    exact_matched_detection_ranks: set[int] = set()
+
+    for item in [design_item for design_item in design_items if design_item.xys]:
         item_match, reason = match_design_item(item, detections, args, trace_points)
         if item_match is not None:
-            matches.append(item_match)
+            matches_by_index[item.index] = item_match
+            exact_matched_detection_ranks.add(item_match.detection.rank)
         else:
             failures.append(failure_record(item, reason))
+
+    for item in [design_item for design_item in design_items if not design_item.xys]:
+        item_match, reason = match_design_item(item, detections, args, trace_points, exact_matched_detection_ranks)
+        if item_match is not None:
+            matches_by_index[item.index] = item_match
+        else:
+            failures.append(failure_record(item, reason))
+
+    matches = [matches_by_index[index] for index in sorted(matches_by_index)]
     slalom_results = [merge_slalom_candidate(candidate, coordinate_items, args) for candidate in slalom_candidates]
 
     name = args.name or design_path.stem

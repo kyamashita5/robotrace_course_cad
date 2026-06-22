@@ -275,7 +275,7 @@ For matching against consolidated design candidates, use `line_arc_segments.json
 
 The arc geometry in `line_arc_segments.json` records the actually used fitted arc interval: endpoints, center, radius, turn direction, angle, and length. This is the preferred source for downstream matching because large-radius partial arcs can have center/radius errors while still placing the used line segment on the correct support circle.
 
-Do not rely on early helper-circle touch correction as the geometric truth for matching. Touch correction for the final CAD candidate is now done later, after image-derived helper-circle candidates have been matched and exact/approx flags are known.
+Do not add any early helper-circle touch correction to the line-arc fitting CAD JSON. Touch correction for the final CAD candidate is done later, after image-derived helper-circle candidates have been matched and exact/approx flags are known.
 
 ### 7. Understand the intermediate helper-circle CAD JSON
 
@@ -287,27 +287,8 @@ Default helper-circle behavior:
 - counterclockwise arcs become `turn: "ccw"`
 - `start_goal_hint` is generated from the confirmed `START` / `GOAL` midpoint and length
 - board dimensions come from the trace report when available
-- helper-circle postprocessing may be enabled for the intermediate CAD JSON
-
-The helper-circle postprocessing, when enabled, is intentionally applied only to `course_cad_model.json`, not to `line_arc_segments.json`.
-
-For consecutive arc runs, postprocessing does the following:
-
-- treat the first circle in a run as fixed
-- apply Fit Touch-equivalent center adjustment sequentially to 1-based positions `2, 3, 4, ..., N-1`
-- apply Fit Prev-equivalent center adjustment to the `N`th circle
-- if the `N`th circle is the final helper circle in the course, place it analytically so it touches both the previous circle and the confirmed `START`-`GOAL` line
-- use a tiny positive numerical slack (`1e-10 cm`) so Course CAD's tangent solver sees a zero-length-like valid tangent without creating short-tangent warnings
-
-For the current course-image parsing workflow, do not use this postprocessed helper-circle sequence as the matching source or as a substitute final JSON. If a comparison/debug run is needed, disable helper-circle postprocessing explicitly:
-
-```bash
-uv run --project course_image_parser python course_image_parser/line_arc_path_fitting.py \
-  tmp/<name>/centerline_trace/<name>/trace_points.tsv \
-  --out-dir tmp/<name>/line_arc_path_fitting \
-  --name <name>_no_touch_adjust \
-  --no-adjust-touching-helper-circles
-```
+- no Fit Touch/Fit Prev/Fit Next-equivalent correction is applied during this JSON conversion
+- helper-circle centers in `course_cad_model.json` are the fitted arc centers from `line_arc_segments.json`
 
 Validate that an intermediate Course CAD JSON loads when it is generated, but do not treat its solver issues as final until the later matching/correction step:
 
@@ -370,7 +351,8 @@ uv run --project course_image_parser python course_image_parser/detect_slalom_te
   data/<name>.png \
   --out-dir tmp/<name>/slalom_template_detection \
   --board-out-dir tmp/<name>/extracted_course_boards \
-  --name <name>
+  --name <name> \
+  --trace-points-tsv tmp/<name>/centerline_trace/<name>/trace_points.tsv
 ```
 
 Expected slalom outputs under `tmp/<name>/slalom_template_detection/<name>/`:
@@ -381,7 +363,7 @@ Expected slalom outputs under `tmp/<name>/slalom_template_detection/<name>/`:
 - `slalom_candidates.png`: candidate overlay
 - `slalom_candidates.tsv` and `report.json`: ranked slalom candidates
 
-The slalom detector is intentionally permissive. It should provide many candidates for scripted postfiltering, text consolidation, and optional human review rather than aggressively suppress false positives.
+The slalom detector is intentionally permissive before postfiltering, but the normal workflow must pass `--trace-points-tsv` so trajectory post-filtering is enabled. Check `report.json` and confirm `post_filter.trajectory_filter.enabled` is `true` before using the slalom report in `consolidate_design_candidates.py`.
 
 Important: dashed guide frames, small marker marks, and printed marker rows are normal evidence for a drawn slalom template. Do not reject a slalom candidate merely because it is surrounded by a dashed frame or includes marker-like printed elements. Those features may be exactly why the template is present in the drawing.
 
@@ -491,7 +473,7 @@ uv run --project course_image_parser python course_image_parser/match_helper_cir
   --top-k 5
 ```
 
-Do not use `course_cad_model.json` as the primary matching input for this workflow. Its helper-circle centers may have been altered by intermediate touch correction, and large-radius partial arcs are better judged by the line actually used.
+Do not use `course_cad_model.json` as the primary matching input for this workflow. It does not contain the full fitted arc intervals, and large-radius partial arcs are better judged by the line actually used in `line_arc_segments.json`.
 
 Expected matching behavior:
 
@@ -643,7 +625,7 @@ Before stopping, make sure all of the following are true:
 - the centerline trace outcome was reviewed in overlay form, not only by numeric report
 - arc radii in `line_arc_segments.json` are `R10 cm` or larger and multiples of `5 cm` unless `--no-quantize-arc-radius` was used
 - start-touching and goal-touching candidate segments were constrained to the confirmed `START`-`GOAL` line
-- `line_arc_segments.json` was used as the fitted input for helper-circle matching, not touch-adjusted `course_cad_model.json`
+- `line_arc_segments.json` was used as the fitted input for helper-circle matching, not the interval-free `course_cad_model.json`
 - intermediate `course_cad_model.json` loads with `load_course_model` when generated, but is not treated as final geometry truth
 - support-circle candidates were generated when red/magenta helper-circle annotations are present or suspected
 - `magenta_overlay.png` was inspected to confirm that red support-circle annotations were actually extracted

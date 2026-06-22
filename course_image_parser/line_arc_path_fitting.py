@@ -17,7 +17,6 @@ import numpy as np
 
 OUT_DIR = Path("tmp/line_arc_path_fitting")
 SegmentKind = Literal["line", "arc"]
-TOUCH_SLACK_CM = 1e-10
 
 
 @dataclass(frozen=True)
@@ -63,8 +62,6 @@ class FitConfig:
     board_height_cm: float | None = None
     grid_cell_width_cm: float = 90.0
     grid_cell_height_cm: float = 90.0
-    adjust_touching_helper_circles: bool = True
-    start_goal_touch_iterations: int = 12
     debug_keep_rejected_transitions: bool = False
 
     @property
@@ -207,8 +204,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--board-height-cm", type=float, help="board height for the additional course CAD JSON")
     parser.add_argument("--grid-cell-width-cm", type=float, default=FitConfig.grid_cell_width_cm)
     parser.add_argument("--grid-cell-height-cm", type=float, default=FitConfig.grid_cell_height_cm)
-    parser.add_argument("--no-adjust-touching-helper-circles", action="store_true")
-    parser.add_argument("--start-goal-touch-iterations", type=int, default=FitConfig.start_goal_touch_iterations)
     parser.add_argument("--debug-keep-rejected-transitions", action="store_true")
     parser.add_argument("--write-svg", action="store_true", help="write a simple debug SVG next to the JSON")
     return parser.parse_args()
@@ -1040,215 +1035,6 @@ def unique_radius_presets(segments: list[Segment]) -> list[float]:
     return values
 
 
-def helper_touch_distance(anchor: dict[str, object], moving: dict[str, object]) -> float:
-    anchor_radius = float(anchor["r"])
-    moving_radius = float(moving["r"])
-    if anchor["turn"] == moving["turn"]:
-        return abs(anchor_radius - moving_radius) + TOUCH_SLACK_CM
-    return anchor_radius + moving_radius + TOUCH_SLACK_CM
-
-
-def circle_center(circle: dict[str, object]) -> np.ndarray:
-    return np.asarray([float(circle["x"]), float(circle["y"])], dtype=np.float64)
-
-
-def set_circle_center(circle: dict[str, object], center: np.ndarray) -> None:
-    circle["x"] = round(float(center[0]), 12)
-    circle["y"] = round(float(center[1]), 12)
-
-
-def circle_intersection_centers(c0: np.ndarray, r0: float, c1: np.ndarray, r1: float) -> list[np.ndarray]:
-    delta = c1 - c0
-    distance = float(np.linalg.norm(delta))
-    eps = 1e-6
-    if distance <= eps:
-        return []
-    if distance > r0 + r1 + eps:
-        return []
-    if distance < abs(r0 - r1) - eps:
-        return []
-    a = (r0 * r0 - r1 * r1 + distance * distance) / (2.0 * distance)
-    h2 = r0 * r0 - a * a
-    if h2 < -eps:
-        return []
-    base = c0 + delta * (a / distance)
-    if abs(h2) <= eps:
-        return [base]
-    h = math.sqrt(max(0.0, h2))
-    offset = np.asarray([-delta[1] / distance * h, delta[0] / distance * h], dtype=np.float64)
-    return [base + offset, base - offset]
-
-
-def adjusted_center_touching_neighbors_dict(circles: list[dict[str, object]], index: int) -> np.ndarray | None:
-    if not 0 < index < len(circles) - 1:
-        return None
-    previous = circles[index - 1]
-    selected = circles[index]
-    next_circle = circles[index + 1]
-    distance_to_previous = helper_touch_distance(previous, selected)
-    distance_to_next = helper_touch_distance(next_circle, selected)
-    if distance_to_previous <= 1e-6 or distance_to_next <= 1e-6:
-        return None
-    candidates = circle_intersection_centers(
-        circle_center(previous),
-        distance_to_previous,
-        circle_center(next_circle),
-        distance_to_next,
-    )
-    if not candidates:
-        return None
-    current = circle_center(selected)
-    return min(candidates, key=lambda point: float(np.linalg.norm(point - current)))
-
-
-def adjusted_center_touching_previous_dict(circles: list[dict[str, object]], index: int) -> np.ndarray | None:
-    if not 0 < index < len(circles):
-        return None
-    moving = circles[index]
-    anchor = circles[index - 1]
-    moving_center = circle_center(moving)
-    anchor_center = circle_center(anchor)
-    direction_to_anchor = anchor_center - moving_center
-    current_distance = float(np.linalg.norm(direction_to_anchor))
-    target_distance = helper_touch_distance(anchor, moving)
-    if current_distance <= 1e-9 or target_distance <= 1e-6:
-        return None
-    t_candidates = [
-        1.0 - target_distance / current_distance,
-        1.0 + target_distance / current_distance,
-    ]
-    best_t = min(t_candidates, key=lambda t: t * t)
-    return moving_center + direction_to_anchor * best_t
-
-
-def adjusted_center_touching_start_goal_line(circle: dict[str, object], config: FitConfig) -> np.ndarray | None:
-    line_points = start_goal_line_points(config)
-    if line_points is None:
-        return None
-    start, goal = line_points
-    line = goal - start
-    line_length = float(np.linalg.norm(line))
-    if line_length <= 1e-9:
-        return None
-    unit = line / line_length
-    normal = np.asarray([-unit[1], unit[0]], dtype=np.float64)
-    center = circle_center(circle)
-    projection = start + np.dot(center - start, unit) * unit
-    radius = float(circle["r"]) + TOUCH_SLACK_CM
-    candidates = [projection + normal * radius, projection - normal * radius]
-    return min(candidates, key=lambda point: float(np.linalg.norm(point - center)))
-
-
-def adjusted_center_touching_previous_and_start_goal_line(
-    circles: list[dict[str, object]],
-    index: int,
-    config: FitConfig,
-) -> np.ndarray | None:
-    if not 0 < index < len(circles):
-        return None
-    line_points = start_goal_line_points(config)
-    if line_points is None:
-        return None
-    start, goal = line_points
-    line = goal - start
-    line_length = float(np.linalg.norm(line))
-    if line_length <= 1e-9:
-        return None
-
-    unit = line / line_length
-    normal = np.asarray([-unit[1], unit[0]], dtype=np.float64)
-    moving = circles[index]
-    previous = circles[index - 1]
-    previous_center = circle_center(previous)
-    current_center = circle_center(moving)
-    touch_distance = helper_touch_distance(previous, moving)
-    line_offset = float(moving["r"]) + TOUCH_SLACK_CM
-
-    candidates: list[np.ndarray] = []
-    for side in (-1.0, 1.0):
-        offset_origin = start + normal * (side * line_offset)
-        prev_along = float(np.dot(previous_center - offset_origin, unit))
-        prev_perp_vector = previous_center - (offset_origin + unit * prev_along)
-        prev_perp_sq = float(np.dot(prev_perp_vector, prev_perp_vector))
-        along_sq = touch_distance * touch_distance - prev_perp_sq
-        if along_sq < -1e-8:
-            continue
-        along = math.sqrt(max(0.0, along_sq))
-        candidates.append(offset_origin + unit * (prev_along + along))
-        candidates.append(offset_origin + unit * (prev_along - along))
-
-    if not candidates:
-        return None
-    return min(candidates, key=lambda point: float(np.linalg.norm(point - current_center)))
-
-
-def adjust_last_circle_to_previous_and_start_goal_line(
-    circles: list[dict[str, object]],
-    index: int,
-    config: FitConfig,
-) -> None:
-    exact_center = adjusted_center_touching_previous_and_start_goal_line(circles, index, config)
-    if exact_center is not None:
-        set_circle_center(circles[index], exact_center)
-        return
-    for _ in range(max(1, config.start_goal_touch_iterations)):
-        prev_center = adjusted_center_touching_previous_dict(circles, index)
-        if prev_center is not None:
-            set_circle_center(circles[index], prev_center)
-        line_center = adjusted_center_touching_start_goal_line(circles[index], config)
-        if line_center is not None:
-            set_circle_center(circles[index], line_center)
-
-
-def consecutive_arc_runs(segments: list[Segment]) -> list[list[int]]:
-    runs: list[list[int]] = []
-    current: list[int] = []
-    arc_index = 0
-    for segment in segments:
-        if isinstance(segment, ArcSegment):
-            current.append(arc_index)
-            arc_index += 1
-        else:
-            if current:
-                runs.append(current)
-                current = []
-    if current:
-        runs.append(current)
-    return runs
-
-
-def adjust_touching_helper_circles(
-    circles: list[dict[str, object]],
-    segments: list[Segment],
-    config: FitConfig,
-) -> None:
-    if not config.adjust_touching_helper_circles:
-        return
-    runs = consecutive_arc_runs(segments)
-    if not runs:
-        return
-    last_circle_index = len(circles) - 1
-    for run in runs:
-        if len(run) < 2:
-            continue
-        local_circles = [circles[index] for index in run]
-        n = len(local_circles)
-        # 1-based positions: 2, 3, 4, ..., N-1.
-        for one_based in range(2, n):
-            local_index = one_based - 1
-            center = adjusted_center_touching_neighbors_dict(local_circles, local_index)
-            if center is not None:
-                set_circle_center(local_circles[local_index], center)
-        last_local_index = n - 1
-        last_global_index = run[-1]
-        if last_global_index == last_circle_index:
-            adjust_last_circle_to_previous_and_start_goal_line(local_circles, last_local_index, config)
-        else:
-            center = adjusted_center_touching_previous_dict(local_circles, last_local_index)
-            if center is not None:
-                set_circle_center(local_circles[last_local_index], center)
-
-
 def course_cad_model_to_dict(result: FitResult, config: FitConfig) -> dict[str, object]:
     board_width_cm, board_height_cm = infer_board_size(result.fit_points, config)
     if config.start_cm is not None and config.goal_cm is not None:
@@ -1272,7 +1058,6 @@ def course_cad_model_to_dict(result: FitResult, config: FitConfig) -> dict[str, 
                 "locked": False,
             }
         )
-    adjust_touching_helper_circles(circles, result.segments, config)
 
     return {
         "board": {
@@ -1461,8 +1246,6 @@ def build_config(
         board_height_cm=args.board_height_cm if args.board_height_cm is not None else board_height_cm,
         grid_cell_width_cm=args.grid_cell_width_cm,
         grid_cell_height_cm=args.grid_cell_height_cm,
-        adjust_touching_helper_circles=not args.no_adjust_touching_helper_circles,
-        start_goal_touch_iterations=args.start_goal_touch_iterations,
         debug_keep_rejected_transitions=args.debug_keep_rejected_transitions,
     )
 
