@@ -21,6 +21,16 @@ def adjusted_center_touching_neighbors(circles: list[HelperCircle], index: int) 
     if distance_to_previous <= TOUCH_DISTANCE_EPSILON_CM or distance_to_next <= TOUCH_DISTANCE_EPSILON_CM:
         return None
 
+    degenerate_center = projected_center_for_degenerate_neighbor_touch(
+        selected.center,
+        previous.center,
+        distance_to_previous,
+        next_circle.center,
+        distance_to_next,
+    )
+    if degenerate_center is not None:
+        return degenerate_center
+
     candidates = circle_intersection_points(
         previous.center,
         distance_to_previous,
@@ -66,6 +76,24 @@ def helper_circle_touch_distance(anchor: HelperCircle, moving: HelperCircle) -> 
     if anchor.turn == moving.turn:
         return abs(anchor.r - moving.r)
     return anchor.r + moving.r
+
+
+def projected_center_for_degenerate_neighbor_touch(
+    current: Vec2,
+    previous_center: Vec2,
+    distance_to_previous: float,
+    next_center: Vec2,
+    distance_to_next: float,
+) -> Vec2 | None:
+    if previous_center.distance_to(next_center) > TOUCH_DISTANCE_EPSILON_CM:
+        return None
+    if abs(distance_to_previous - distance_to_next) > TOUCH_DISTANCE_EPSILON_CM:
+        return None
+    direction = current - previous_center
+    current_distance = direction.norm()
+    if current_distance <= EPSILON:
+        return None
+    return previous_center + direction * (distance_to_previous / current_distance)
 
 
 def circle_intersection_points(c0: Vec2, r0: float, c1: Vec2, r1: float) -> list[Vec2]:

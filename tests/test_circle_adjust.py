@@ -11,6 +11,7 @@ from robotrace_course_cad.solver.circle_adjust import (
     adjusted_center_touching_previous,
     circle_intersection_points,
     helper_circle_touch_distance,
+    projected_center_for_degenerate_neighbor_touch,
 )
 
 
@@ -54,6 +55,36 @@ class CircleAdjustTest(unittest.TestCase):
         ]
 
         self.assertIsNone(adjusted_center_touching_neighbors(circles, 1))
+
+    def test_adjusted_center_projects_degenerate_same_center_neighbors(self) -> None:
+        circles = [
+            HelperCircle(0, 410.0, 430.0, 400.0, Turn.CCW),
+            HelperCircle(1, 585.0, 87.0, 15.0, Turn.CCW),
+            HelperCircle(2, 410.0, 430.0, 370.0, Turn.CW),
+        ]
+
+        center = adjusted_center_touching_neighbors(circles, 1)
+
+        self.assertIsNotNone(center)
+        assert center is not None
+        anchor = circles[0].center
+        original_direction = (circles[1].center - anchor).normalized()
+        adjusted_direction = (center - anchor).normalized()
+        self.assertAlmostEqual(center.distance_to(anchor), 385.0)
+        self.assertAlmostEqual(adjusted_direction.x, original_direction.x)
+        self.assertAlmostEqual(adjusted_direction.y, original_direction.y)
+        self.assertAlmostEqual(center.distance_to(circles[2].center), 385.0)
+
+    def test_degenerate_projection_requires_same_touch_distance(self) -> None:
+        center = projected_center_for_degenerate_neighbor_touch(
+            current=Vec2(10.0, 0.0),
+            previous_center=Vec2(0.0, 0.0),
+            distance_to_previous=10.0,
+            next_center=Vec2(0.0, 0.0),
+            distance_to_next=12.0,
+        )
+
+        self.assertIsNone(center)
 
     def test_adjusted_center_touching_anchor_uses_smallest_t_squared_solution(self) -> None:
         moving = HelperCircle(1, 10.0, 0.0, 10.0, Turn.CW)
