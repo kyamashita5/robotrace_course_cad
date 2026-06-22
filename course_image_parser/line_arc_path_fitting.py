@@ -55,6 +55,8 @@ class FitConfig:
     tangent_weight: float = 5.0
     tangent_soft_penalty: float = 50.0
     type_switch_penalty: float = 0.0
+    same_radius_same_turn_arc_penalty: float = 2.0
+    same_radius_tolerance: float = 1e-6
     start_cm: tuple[float, float] | None = None
     goal_cm: tuple[float, float] | None = None
     board_width_cm: float | None = None
@@ -198,6 +200,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--tangent-weight", type=float, default=FitConfig.tangent_weight)
     parser.add_argument("--tangent-soft-penalty", type=float, default=FitConfig.tangent_soft_penalty)
     parser.add_argument("--type-switch-penalty", type=float, default=FitConfig.type_switch_penalty)
+    parser.add_argument("--same-radius-same-turn-arc-penalty", type=float, default=FitConfig.same_radius_same_turn_arc_penalty)
     parser.add_argument("--start-cm", help="confirmed START point as x,y in board cm; defaults to sibling report.json")
     parser.add_argument("--goal-cm", help="confirmed GOAL point as x,y in board cm; defaults to sibling report.json")
     parser.add_argument("--board-width-cm", type=float, help="board width for the additional course CAD JSON")
@@ -735,15 +738,30 @@ def tangent_angle_penalty(angle: float, config: FitConfig) -> float:
     return penalty
 
 
+def same_radius_same_turn_arc_pair(left: Segment, right: Segment, config: FitConfig) -> bool:
+    if not isinstance(left, ArcSegment) or not isinstance(right, ArcSegment):
+        return False
+    if left.clockwise != right.clockwise:
+        return False
+    return abs(left.radius - right.radius) <= config.same_radius_tolerance
+
+
+def segment_transition_penalty(left: Segment, right: Segment, angle: float, config: FitConfig) -> float:
+    penalty = tangent_angle_penalty(angle, config)
+    if left.kind != right.kind:
+        penalty += config.type_switch_penalty
+    if same_radius_same_turn_arc_pair(left, right, config):
+        penalty += config.same_radius_same_turn_arc_penalty
+    return penalty
+
+
 def transition_cost(prev: SegmentHypothesis, curr: SegmentHypothesis, config: FitConfig) -> tuple[float, float] | None:
     if prev.end_idx != curr.start_idx:
         return None
     angle = angle_between_tangents(prev.end_tangent, curr.start_tangent)
     if angle >= config.max_tangent_angle_error:
         return None
-    penalty = tangent_angle_penalty(angle, config)
-    if prev.segment.kind != curr.segment.kind:
-        penalty += config.type_switch_penalty
+    penalty = segment_transition_penalty(prev.segment, curr.segment, angle, config)
     return penalty, angle
 
 
@@ -936,9 +954,7 @@ def connection_report(segments: list[Segment], config: FitConfig) -> list[dict[s
     report: list[dict[str, int | float | str]] = []
     for index, (prev, curr) in enumerate(zip(segments[:-1], segments[1:])):
         angle = angle_between_tangents(prev.end_tangent, curr.start_tangent)
-        penalty = tangent_angle_penalty(angle, config)
-        if prev.kind != curr.kind:
-            penalty += config.type_switch_penalty
+        penalty = segment_transition_penalty(prev, curr, angle, config)
         report.append(
             {
                 "connection_index": index,
@@ -947,6 +963,7 @@ def connection_report(segments: list[Segment], config: FitConfig) -> list[dict[s
                 "joint_idx": prev.end_idx,
                 "tangent_angle_error_deg": round(math.degrees(angle), 6),
                 "transition_cost": round(penalty, 9),
+                "same_radius_same_turn_arc": same_radius_same_turn_arc_pair(prev, curr, config),
             }
         )
     return report
@@ -1320,7 +1337,7 @@ def write_segments_tsv(path: Path, segments: list[Segment]) -> None:
 
 
 def write_connections_tsv(path: Path, report: list[dict[str, int | float | str]]) -> None:
-    lines = ["connection_index\tjoint_idx\tprev_kind\tcurr_kind\ttangent_angle_error_deg\ttransition_cost"]
+    lines = ["connection_index\tjoint_idx\tprev_kind\tcurr_kind\ttangent_angle_error_deg\ttransition_cost\tsame_radius_same_turn_arc"]
     for item in report:
         lines.append(
             "\t".join(
@@ -1331,6 +1348,7 @@ def write_connections_tsv(path: Path, report: list[dict[str, int | float | str]]
                     str(item["curr_kind"]),
                     f"{float(item['tangent_angle_error_deg']):.6f}",
                     f"{float(item['transition_cost']):.9f}",
+                    str(item.get("same_radius_same_turn_arc", False)).lower(),
                 ]
             )
         )
@@ -1436,6 +1454,7 @@ def build_config(
         tangent_weight=args.tangent_weight,
         tangent_soft_penalty=args.tangent_soft_penalty,
         type_switch_penalty=args.type_switch_penalty,
+        same_radius_same_turn_arc_penalty=args.same_radius_same_turn_arc_penalty,
         start_cm=start_cm,
         goal_cm=goal_cm,
         board_width_cm=args.board_width_cm if args.board_width_cm is not None else board_width_cm,
