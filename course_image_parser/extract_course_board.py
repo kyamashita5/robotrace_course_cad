@@ -58,6 +58,7 @@ class BoardDetection:
     total_score: float
     x_grid: AxisGridDetection
     y_grid: AxisGridDetection
+    board_size_hypothesis: dict[str, object]
 
 
 def load_board_size_from_json(json_path: Path) -> tuple[float, float]:
@@ -359,12 +360,18 @@ def choose_board_dimensions(
     y_grid: AxisGridDetection,
     requested_size: tuple[float, float] | None,
     candidate_cell_sizes: list[tuple[float, float]],
-) -> tuple[float, float, float]:
+) -> tuple[float, float, float, dict[str, object]]:
     if requested_size is not None:
         ratio = requested_size[0] / max(requested_size[1], 1e-6)
         pixel_ratio = width_px / max(height_px, 1e-6)
         penalty = abs(math.log(max(pixel_ratio, 1e-6) / max(ratio, 1e-6)))
-        return requested_size[0], requested_size[1], penalty
+        return requested_size[0], requested_size[1], penalty, {
+            "source": "requested_size",
+            "selected_board_cm": [requested_size[0], requested_size[1]],
+            "pixel_board_ratio": pixel_ratio,
+            "selected_board_ratio": ratio,
+            "aspect_penalty": penalty,
+        }
 
     cell_ratio_px = x_grid.period_px / max(y_grid.period_px, 1e-6)
     intervals_x = max(1, len(x_grid.line_positions) - 1)
@@ -372,9 +379,25 @@ def choose_board_dimensions(
 
     best_size = candidate_cell_sizes[0]
     best_penalty = float("inf")
+    candidates: list[dict[str, object]] = []
     for cell_width_cm, cell_height_cm in candidate_cell_sizes:
         cell_ratio_cm = cell_width_cm / max(cell_height_cm, 1e-6)
-        penalty = abs(math.log(max(cell_ratio_px, 1e-6) / max(cell_ratio_cm, 1e-6)))
+        cell_ratio_penalty = abs(math.log(max(cell_ratio_px, 1e-6) / max(cell_ratio_cm, 1e-6)))
+        width_cm = cell_width_cm * intervals_x
+        height_cm = cell_height_cm * intervals_y
+        board_ratio_px = width_px / max(height_px, 1e-6)
+        board_ratio_cm = width_cm / max(height_cm, 1e-6)
+        board_ratio_penalty = abs(math.log(max(board_ratio_px, 1e-6) / max(board_ratio_cm, 1e-6)))
+        penalty = cell_ratio_penalty + board_ratio_penalty
+        candidates.append(
+            {
+                "cell_cm": [cell_width_cm, cell_height_cm],
+                "board_cm": [width_cm, height_cm],
+                "cell_ratio_penalty": cell_ratio_penalty,
+                "board_ratio_penalty": board_ratio_penalty,
+                "total_penalty": penalty,
+            }
+        )
         if penalty < best_penalty:
             best_penalty = penalty
             best_size = (cell_width_cm, cell_height_cm)
@@ -383,8 +406,18 @@ def choose_board_dimensions(
     height_cm = best_size[1] * intervals_y
     board_ratio_px = width_px / max(height_px, 1e-6)
     board_ratio_cm = width_cm / max(height_cm, 1e-6)
-    board_penalty = abs(math.log(max(board_ratio_px, 1e-6) / max(board_ratio_cm, 1e-6)))
-    return width_cm, height_cm, best_penalty + board_penalty
+    candidates.sort(key=lambda candidate: float(candidate["total_penalty"]))
+    return width_cm, height_cm, best_penalty, {
+        "source": "grid_cell_size_hypothesis",
+        "selected_cell_cm": [best_size[0], best_size[1]],
+        "selected_board_cm": [width_cm, height_cm],
+        "grid_intervals": [intervals_x, intervals_y],
+        "pixel_cell_ratio": cell_ratio_px,
+        "pixel_board_ratio": board_ratio_px,
+        "selected_board_ratio": board_ratio_cm,
+        "aspect_penalty": best_penalty,
+        "candidates": candidates,
+    }
 
 
 def detect_board_from_mask(
@@ -409,7 +442,7 @@ def detect_board_from_mask(
     if width_px <= 0.0 or height_px <= 0.0:
         raise RuntimeError("detected board bounds are invalid")
 
-    width_cm, height_cm, aspect_penalty = choose_board_dimensions(
+    width_cm, height_cm, aspect_penalty, board_size_hypothesis = choose_board_dimensions(
         width_px=width_px,
         height_px=height_px,
         x_grid=x_grid,
@@ -441,7 +474,47 @@ def detect_board_from_mask(
         total_score=total_score,
         x_grid=x_grid,
         y_grid=y_grid,
+        board_size_hypothesis=board_size_hypothesis,
     )
+
+
+def axis_grid_to_report(grid: AxisGridDetection) -> dict[str, object]:
+    return {
+        "period_px": float(grid.period_px),
+        "offset_px": float(grid.offset_px),
+        "line_positions_px": list(grid.line_positions),
+        "autocorrelation_score": float(grid.autocorrelation_score),
+        "comb_score": float(grid.comb_score),
+    }
+
+
+def detection_to_report(
+    request: BoardRequest,
+    detection: BoardDetection,
+    image: np.ndarray,
+    normalized: np.ndarray,
+    px_per_cm: int,
+    black_threshold: int,
+    candidate_cell_sizes: list[tuple[float, float]],
+) -> dict[str, object]:
+    return {
+        "image": str(request.image_path),
+        "size_source": request.size_source,
+        "board_color": detection.board_color,
+        "board_cm": [float(detection.width_cm), float(detection.height_cm)],
+        "px_per_cm": px_per_cm,
+        "black_threshold": black_threshold,
+        "candidate_cell_sizes_cm": [[width, height] for width, height in candidate_cell_sizes],
+        "corners_px": detection.corners.tolist(),
+        "source_size_px": [int(image.shape[1]), int(image.shape[0])],
+        "detected_span_px": [float(detection.width_px), float(detection.height_px)],
+        "aspect_penalty": float(detection.aspect_penalty),
+        "x_grid": axis_grid_to_report(detection.x_grid),
+        "y_grid": axis_grid_to_report(detection.y_grid),
+        "total_score": float(detection.total_score),
+        "output_size_px": [int(normalized.shape[1]), int(normalized.shape[0])],
+        "board_size_hypothesis": detection.board_size_hypothesis,
+    }
 
 
 def detect_board(
@@ -587,11 +660,26 @@ def process(
     for board_color, mask in masks.items():
         cv2.imwrite(str(target / f"mask_{board_color}.png"), mask)
 
+    report_payload = detection_to_report(
+        request=request,
+        detection=detection,
+        image=image,
+        normalized=normalized,
+        px_per_cm=px_per_cm,
+        black_threshold=black_threshold,
+        candidate_cell_sizes=candidate_cell_sizes,
+    )
+    (target / "report.json").write_text(json.dumps(report_payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
     with (target / "report.txt").open("w", encoding="utf-8") as report:
         report.write(f"image={request.image_path}\n")
         report.write(f"size_source={request.size_source}\n")
         report.write(f"board_color={detection.board_color}\n")
         report.write(f"board_cm=({detection.width_cm},{detection.height_cm})\n")
+        report.write(f"board_size_hypothesis_source={detection.board_size_hypothesis.get('source')}\n")
+        report.write(f"selected_board_cm={detection.board_size_hypothesis.get('selected_board_cm')}\n")
+        report.write(f"selected_cell_cm={detection.board_size_hypothesis.get('selected_cell_cm')}\n")
+        report.write(f"grid_intervals={detection.board_size_hypothesis.get('grid_intervals')}\n")
         report.write(f"px_per_cm={px_per_cm}\n")
         report.write(f"black_threshold={black_threshold}\n")
         report.write(f"candidate_cell_sizes_cm={candidate_cell_sizes}\n")

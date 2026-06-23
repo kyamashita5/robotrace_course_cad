@@ -89,6 +89,7 @@ Use script outputs such as:
 - detected board corners
 - board color choice
 - estimated board size
+- adopted board-size hypothesis in `report.json` under `board_size_hypothesis`
 - grid period and line positions
 - detection report
 
@@ -109,6 +110,8 @@ When identifying board size, combine the scripted estimate with image evidence s
 - coordinate-range labels
 - known board cell dimensions such as 135 x 90 cm or 180 x 90 cm panels
 - whether all course elements fit naturally inside the interpreted board
+
+Read `tmp/<name>/extracted_course_boards/<name>/report.json` after this step. When `board_size_hypothesis.source` is `"grid_cell_size_hypothesis"`, treat `board_size_hypothesis.selected_cell_cm` as the adopted board-grid cell size for later Course CAD JSON generation unless visual review rejects that board interpretation. Record the selected cell size alongside the board dimensions in your notes.
 
 If the script output and visual evidence disagree, do not force a single answer silently. Present the competing interpretations, explain the mismatch, and ask the user which board interpretation should be treated as authoritative.
 
@@ -232,10 +235,14 @@ uv run --project course_image_parser python course_image_parser/line_arc_path_fi
   tmp/<name>/centerline_trace/<name>/trace_points.tsv \
   --out-dir tmp/<name>/line_arc_path_fitting \
   --name <name> \
+  --grid-cell-width-cm <selected_cell_width_cm> \
+  --grid-cell-height-cm <selected_cell_height_cm> \
   --write-svg
 ```
 
 If the trace was written to a non-default output directory, use that TSV path instead.
+
+Use the `selected_cell_cm` values from `tmp/<name>/extracted_course_boards/<name>/report.json` for `--grid-cell-width-cm` and `--grid-cell-height-cm` when the adopted board-size hypothesis includes them. This is how the final Course CAD-readable JSON reflects the board hypothesis: through its ordinary `grid.cell_width_cm` and `grid.cell_height_cm` fields, not through extra metadata. If the board size came from an explicit sidecar JSON or command-line size and no `selected_cell_cm` is present, use the authoritative grid cell size from that JSON when available; otherwise keep the existing fitting defaults and report that the grid cell size was not inferred from the board extractor.
 
 The fitting script automatically reads the sibling `report.json` for:
 
