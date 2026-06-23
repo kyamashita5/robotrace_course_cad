@@ -39,3 +39,5 @@ Thumbs.db
 
 # Other files to ignore
 data/
+tmp/
+codex_scripts
