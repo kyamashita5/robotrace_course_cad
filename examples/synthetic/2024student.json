@@ -9,7 +9,7 @@
     "origin_x_cm": 0.0,
     "origin_y_cm": 0.0,
     "cell_width_cm": 90.0,
-    "cell_height_cm": 90.0
+    "cell_height_cm": 135.0
   },
   "radius_presets_cm": [
     10.0,
