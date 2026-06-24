@@ -1,0 +1,121 @@
+{
+  "tangents": [
+    {
+      "from_circle_id": 0,
+      "to_circle_id": 1,
+      "p_from": {
+        "x": 200.0,
+        "y": 330.0
+      },
+      "p_to": {
+        "x": 100.0,
+        "y": 330.0
+      },
+      "length_cm": 100.0
+    },
+    {
+      "from_circle_id": 1,
+      "to_circle_id": 2,
+      "p_from": {
+        "x": 70.0,
+        "y": 300.0
+      },
+      "p_to": {
+        "x": 70.0,
+        "y": 300.0
+      },
+      "length_cm": 0.0
+    },
+    {
+      "from_circle_id": 2,
+      "to_circle_id": 3,
+      "p_from": {
+        "x": 50.0,
+        "y": 280.0
+      },
+      "p_to": {
+        "x": 50.0,
+        "y": 280.0
+      },
+      "length_cm": 0.0
+    },
+    {
+      "from_circle_id": 3,
+      "to_circle_id": 4,
+      "p_from": {
+        "x": 33.196869196,
+        "y": 249.153120486
+      },
+      "p_to": {
+        "x": 94.795303794,
+        "y": 153.729680729
+      },
+      "length_cm": 113.578166916
+    },
+    {
+      "from_circle_id": 4,
+      "to_circle_id": 5,
+      "p_from": {
+        "x": 150.0,
+        "y": 170.0
+      },
+      "p_to": {
+        "x": 150.0,
+        "y": 200.0
+      },
+      "length_cm": 30.0
+    },
+    {
+      "from_circle_id": 5,
+      "to_circle_id": 6,
+      "p_from": {
+        "x": 104.664050014,
+        "y": 225.7838833
+      },
+      "p_to": {
+        "x": 39.776033343,
+        "y": 187.189255533
+      },
+      "length_cm": 75.498344353
+    },
+    {
+      "from_circle_id": 6,
+      "to_circle_id": 7,
+      "p_from": {
+        "x": 30.0,
+        "y": 170.0
+      },
+      "p_to": {
+        "x": 30.0,
+        "y": 60.0
+      },
+      "length_cm": 110.0
+    },
+    {
+      "from_circle_id": 7,
+      "to_circle_id": 8,
+      "p_from": {
+        "x": 60.0,
+        "y": 30.0
+      },
+      "p_to": {
+        "x": 215.0,
+        "y": 30.0
+      },
+      "length_cm": 155.0
+    },
+    {
+      "from_circle_id": 8,
+      "to_circle_id": 0,
+      "p_from": {
+        "x": 230.0,
+        "y": 45.0
+      },
+      "p_to": {
+        "x": 230.0,
+        "y": 300.0
+      },
+      "length_cm": 255.0
+    }
+  ]
+}

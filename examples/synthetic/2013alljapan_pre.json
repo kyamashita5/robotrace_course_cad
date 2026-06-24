@@ -1,0 +1,111 @@
+{
+  "board": {
+    "width_cm": 270.0,
+    "height_cm": 360.0
+  },
+  "line_width_cm": 1.9,
+  "min_edge_margin_cm": 20.0,
+  "grid": {
+    "origin_x_cm": 0.0,
+    "origin_y_cm": 0.0,
+    "cell_width_cm": 135.0,
+    "cell_height_cm": 90.0
+  },
+  "radius_presets_cm": [
+    10.0,
+    15.0,
+    20.0,
+    25.0,
+    30.0,
+    40.0,
+    50.0
+  ],
+  "start_goal_hint": {
+    "x": 230.0,
+    "y": 180.0,
+    "length": 100.0
+  },
+  "circles": [
+    {
+      "id": 0,
+      "x": 200.0,
+      "y": 300.0,
+      "r": 30.0,
+      "turn": "ccw",
+      "locked": false
+    },
+    {
+      "id": 1,
+      "x": 100.0,
+      "y": 300.0,
+      "r": 30.0,
+      "turn": "ccw",
+      "locked": false
+    },
+    {
+      "id": 2,
+      "x": 50.0,
+      "y": 300.0,
+      "r": 20.0,
+      "turn": "cw",
+      "locked": false
+    },
+    {
+      "id": 3,
+      "x": 50.0,
+      "y": 260.0,
+      "r": 20.0,
+      "turn": "ccw",
+      "locked": false
+    },
+    {
+      "id": 4,
+      "x": 120.0,
+      "y": 170.0,
+      "r": 30.0,
+      "turn": "ccw",
+      "locked": false
+    },
+    {
+      "id": 5,
+      "x": 120.0,
+      "y": 200.0,
+      "r": 30.0,
+      "turn": "ccw",
+      "locked": false
+    },
+    {
+      "id": 6,
+      "x": 50.0,
+      "y": 170.0,
+      "r": 20.0,
+      "turn": "ccw",
+      "locked": false
+    },
+    {
+      "id": 7,
+      "x": 60.0,
+      "y": 60.0,
+      "r": 30.0,
+      "turn": "ccw",
+      "locked": false
+    },
+    {
+      "id": 8,
+      "x": 215.0,
+      "y": 45.0,
+      "r": 15.0,
+      "turn": "ccw",
+      "locked": false
+    }
+  ],
+  "metadata": {
+    "helper_circle_correction": {
+      "fitted_json": "tmp/2013alljapan_pre/line_arc_path_fitting/2013alljapan_pre/course_cad_model.json",
+      "match_json": "tmp/2013alljapan_pre/helper_circle_matching/consolidated_arc_residual/helper_circle_matches.json",
+      "min_match_score": 0.4,
+      "touch_tangent_threshold_cm": 5.0,
+      "fit_approx_centers": true
+    }
+  }
+}

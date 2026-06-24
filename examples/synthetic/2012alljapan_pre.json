@@ -1,0 +1,134 @@
+{
+  "board": {
+    "width_cm": 270.0,
+    "height_cm": 405.0
+  },
+  "line_width_cm": 1.9,
+  "min_edge_margin_cm": 20.0,
+  "grid": {
+    "origin_x_cm": 0.0,
+    "origin_y_cm": 0.0,
+    "cell_width_cm": 90.0,
+    "cell_height_cm": 135.0
+  },
+  "radius_presets_cm": [
+    10.0,
+    15.0,
+    20.0,
+    25.0,
+    30.0,
+    40.0,
+    50.0
+  ],
+  "start_goal_hint": {
+    "x": 30.0,
+    "y": 205.0,
+    "length": 100.0
+  },
+  "circles": [
+    {
+      "id": 0,
+      "x": 50.0,
+      "y": 350.0,
+      "r": 20.0,
+      "turn": "cw",
+      "locked": false
+    },
+    {
+      "id": 1,
+      "x": 210.0,
+      "y": 340.0,
+      "r": 30.0,
+      "turn": "cw",
+      "locked": false
+    },
+    {
+      "id": 2,
+      "x": 220.0,
+      "y": 240.0,
+      "r": 20.0,
+      "turn": "cw",
+      "locked": false
+    },
+    {
+      "id": 3,
+      "x": 125.0,
+      "y": 200.0,
+      "r": 20.0,
+      "turn": "ccw",
+      "locked": false
+    },
+    {
+      "id": 4,
+      "x": 97.59503313179817,
+      "y": 158.17933775090643,
+      "r": 30.0,
+      "turn": "cw",
+      "locked": false
+    },
+    {
+      "id": 5,
+      "x": 135.0,
+      "y": 125.0,
+      "r": 20.0,
+      "turn": "ccw",
+      "locked": false
+    },
+    {
+      "id": 6,
+      "x": 135.0,
+      "y": 245.0,
+      "r": 20.0,
+      "turn": "ccw",
+      "locked": false
+    },
+    {
+      "id": 7,
+      "x": 120.0,
+      "y": 290.0,
+      "r": 15.0,
+      "turn": "cw",
+      "locked": false
+    },
+    {
+      "id": 8,
+      "x": 175.0,
+      "y": 315.0,
+      "r": 20.0,
+      "turn": "cw",
+      "locked": false
+    },
+    {
+      "id": 9,
+      "x": 220.0,
+      "y": 170.0,
+      "r": 25.0,
+      "turn": "ccw",
+      "locked": false
+    },
+    {
+      "id": 10,
+      "x": 220.0,
+      "y": 125.0,
+      "r": 20.0,
+      "turn": "cw",
+      "locked": false
+    },
+    {
+      "id": 11,
+      "x": 210.0,
+      "y": 60.0,
+      "r": 30.0,
+      "turn": "cw",
+      "locked": false
+    },
+    {
+      "id": 12,
+      "x": 45.0,
+      "y": 45.0,
+      "r": 15.0,
+      "turn": "cw",
+      "locked": false
+    }
+  ]
+}

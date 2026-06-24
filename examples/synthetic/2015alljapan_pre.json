@@ -1,0 +1,94 @@
+{
+  "board": {
+    "width_cm": 540.0,
+    "height_cm": 180.0
+  },
+  "line_width_cm": 1.9,
+  "min_edge_margin_cm": 20.0,
+  "grid": {
+    "origin_x_cm": 0.0,
+    "origin_y_cm": 0.0,
+    "cell_width_cm": 135.0,
+    "cell_height_cm": 90.0
+  },
+  "radius_presets_cm": [
+    10.0,
+    15.0,
+    20.0,
+    25.0,
+    30.0,
+    40.0,
+    50.0
+  ],
+  "start_goal_hint": {
+    "x": 115.0,
+    "y": 150.0,
+    "length": 100.0
+  },
+  "circles": [
+    {
+      "id": 0,
+      "x": 490.0,
+      "y": 130.0,
+      "r": 20.0,
+      "turn": "cw",
+      "locked": false
+    },
+    {
+      "id": 1,
+      "x": 435.0,
+      "y": 85.0,
+      "r": 25.0,
+      "turn": "cw",
+      "locked": false
+    },
+    {
+      "id": 2,
+      "x": 490.0,
+      "y": 45.0,
+      "r": 15.0,
+      "turn": "cw",
+      "locked": false
+    },
+    {
+      "id": 3,
+      "x": 300.0,
+      "y": -270.0,
+      "r": 300.0,
+      "turn": "ccw",
+      "locked": false
+    },
+    {
+      "id": 4,
+      "x": 270.0,
+      "y": 329.2495306631454,
+      "r": 300.0,
+      "turn": "cw",
+      "locked": false
+    },
+    {
+      "id": 5,
+      "x": 240.0,
+      "y": -270.0,
+      "r": 300.0,
+      "turn": "ccw",
+      "locked": false
+    },
+    {
+      "id": 6,
+      "x": 50.0,
+      "y": 50.0,
+      "r": 20.0,
+      "turn": "cw",
+      "locked": false
+    },
+    {
+      "id": 7,
+      "x": 40.0,
+      "y": 140.0,
+      "r": 10.0,
+      "turn": "cw",
+      "locked": false
+    }
+  ]
+}
