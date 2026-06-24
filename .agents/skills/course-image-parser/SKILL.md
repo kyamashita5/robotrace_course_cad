@@ -226,6 +226,8 @@ Inspect the generated artifacts:
 
 If the trace fails to reach the goal or visibly leaves the line, do not silently start broad parameter exploration. Report where and how it failed, then ask the user before changing tracing or morphology parameters beyond the current confirmed defaults.
 
+When reporting this failure, suggest `--line-mask-mode nonwhite-except-cyan` as the next targeted retry when colored or gray annotations appear to be breaking the black-line mask. Explain that this mode keeps non-white marks while removing cyan board/grid contour lines, which can preserve black-line continuity through red or gray overprint areas. Do not run this retry until the user explicitly asks for it.
+
 ### 6. Fit line/arc path and preserve arc geometry
 
 If the board interpretation, start/goal interpretation, and centerline trace look acceptable, continue automatically to line/arc fitting.

@@ -62,7 +62,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--normalized-input", action="store_true")
     parser.add_argument("--start-cm", required=True, help="confirmed START point as x,y in board cm")
     parser.add_argument("--goal-cm", required=True, help="confirmed GOAL point as x,y in board cm")
+    parser.add_argument(
+        "--line-mask-mode",
+        choices=("black", "nonwhite-except-cyan"),
+        default="black",
+        help="black keeps the existing dark-line extraction; nonwhite-except-cyan keeps colored/gray marks but removes cyan board/grid lines",
+    )
     parser.add_argument("--line-threshold", type=int, default=150)
+    parser.add_argument("--white-threshold", type=int, default=245)
+    parser.add_argument("--white-saturation-threshold", type=int, default=35)
     parser.add_argument("--erode-size", type=int, default=5)
     parser.add_argument("--dilate-size", type=int, default=5)
     parser.add_argument("--open-erode-size", type=int, default=5)
@@ -104,13 +112,25 @@ def normalize_vector(vector: np.ndarray) -> np.ndarray:
     return vector / norm
 
 
-def extract_black_mask(image: np.ndarray, threshold: int) -> np.ndarray:
+def extract_black_mask(
+    image: np.ndarray,
+    threshold: int,
+    *,
+    mode: str = "black",
+    white_threshold: int = 245,
+    white_saturation_threshold: int = 35,
+) -> np.ndarray:
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
     hue = hsv[:, :, 0]
     saturation = hsv[:, :, 1]
     value = hsv[:, :, 2]
 
     cyan_like = (hue >= 80) & (hue <= 110) & (saturation >= 30)
+    if mode == "nonwhite-except-cyan":
+        white_like = (value >= white_threshold) & (saturation <= white_saturation_threshold)
+        mask = ~white_like & ~cyan_like
+        return (mask.astype(np.uint8) * 255)
+
     magenta_like = (hue >= 135) & (hue <= 175) & (saturation >= 30)
     yellow_like = (hue >= 15) & (hue <= 45) & (saturation >= 30)
     colored_overlay = cyan_like | magenta_like | yellow_like
@@ -526,7 +546,13 @@ def main() -> None:
     start_cm = parse_point_cm(args.start_cm)
     goal_cm = parse_point_cm(args.goal_cm)
     normalized, board_width_cm, board_height_cm, px_per_cm, _board_color = normalize_board_image(args)
-    line_mask = extract_black_mask(normalized, args.line_threshold)
+    line_mask = extract_black_mask(
+        normalized,
+        args.line_threshold,
+        mode=args.line_mask_mode,
+        white_threshold=args.white_threshold,
+        white_saturation_threshold=args.white_saturation_threshold,
+    )
     open_erode_size = args.open_erode_size or args.erode_size
     open_dilate_size = args.open_dilate_size or args.dilate_size
     close_dilate_size = args.close_dilate_size or args.dilate_size
