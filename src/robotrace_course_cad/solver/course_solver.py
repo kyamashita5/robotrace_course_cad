@@ -3,6 +3,7 @@ from __future__ import annotations
 from robotrace_course_cad.model.course_model import CourseModel, HelperCircle
 from robotrace_course_cad.model.course_solution import CourseSolution, TangentSegment, ValidationIssue
 from robotrace_course_cad.solver.arcs import MIN_SEGMENT_LENGTH_CM, arc_angle_for_turn, generate_arcs
+from robotrace_course_cad.solver.course_rules import validate_course_rules
 from robotrace_course_cad.solver.intersections import validate_intersections
 from robotrace_course_cad.solver.markers import generate_corner_markers, generate_start_goal_segment_and_markers
 from robotrace_course_cad.solver.materials import estimate_materials
@@ -86,6 +87,7 @@ def solve_course(model: CourseModel) -> CourseSolution:
     solution = CourseSolution(tangents=tangents, arcs=arcs, issues=issues)
     issues.extend(validate_intersections(solution))
     start_goal_segment, start_goal_markers = generate_start_goal_segment_and_markers(model, tangents)
+    issues.extend(validate_course_rules(model, tangents, arcs, start_goal_segment))
     corner_markers = generate_corner_markers(solution)
     solution = CourseSolution(
         tangents=tangents,

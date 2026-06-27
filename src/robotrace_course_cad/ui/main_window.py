@@ -29,6 +29,7 @@ from PySide6.QtWidgets import (
 
 from robotrace_course_cad.io.json_io import load_course_model, save_course_model
 from robotrace_course_cad.model.course_model import CourseModel, HelperCircle, Turn
+from robotrace_course_cad.model.course_solution import CourseSolution, ValidationIssue
 from robotrace_course_cad.render.final_drawing_exporter import FinalDrawingOptions, export_final_drawing
 from robotrace_course_cad.render.qt_renderer import render_course
 from robotrace_course_cad.solver.circle_adjust import (
@@ -249,13 +250,7 @@ class MainWindow(QMainWindow):
         self._updating_table = False
 
     def refresh_issues(self) -> None:
-        lines = []
-        if not self.solution.issues:
-            lines.append("No solver messages.")
-        else:
-            lines.extend(f"{issue.severity.upper()}: {issue.message}" for issue in self.solution.issues)
-        lines.extend(format_material_estimate(self.solution.material_estimate.cutting_sheets, self.solution.material_estimate.vinyl_tape_length_cm))
-        self.issue_label.setPlainText("\n".join(lines))
+        self.issue_label.setPlainText(format_solution_messages(self.solution))
 
     def open_json(self) -> None:
         start_dir = str(self.model_path.parent) if self.model_path else ""
@@ -547,6 +542,26 @@ def _readonly_item(value: str) -> QTableWidgetItem:
     item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
     item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
     return item
+
+
+def format_solution_messages(solution: CourseSolution) -> str:
+    lines = []
+    if not solution.issues:
+        lines.append("No solver messages.")
+    else:
+        lines.extend(format_issue(issue) for issue in sorted_issues(solution.issues))
+    lines.extend(format_material_estimate(solution.material_estimate.cutting_sheets, solution.material_estimate.vinyl_tape_length_cm))
+    return "\n".join(lines)
+
+
+def sorted_issues(issues: list[ValidationIssue]) -> list[ValidationIssue]:
+    severity_order = {"error": 0, "warning": 1, "info": 2}
+    ordered = sorted(enumerate(issues), key=lambda item: (severity_order.get(item[1].severity.lower(), 3), item[0]))
+    return [issue for _index, issue in ordered]
+
+
+def format_issue(issue: ValidationIssue) -> str:
+    return f"{issue.severity.upper()}: {issue.message}"
 
 
 def format_material_estimate(cutting_sheets: dict[str, int], vinyl_tape_length_cm: float) -> list[str]:
