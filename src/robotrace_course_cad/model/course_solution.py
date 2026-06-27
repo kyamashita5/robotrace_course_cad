@@ -72,6 +72,12 @@ class ValidationIssue:
 
 
 @dataclass(frozen=True)
+class MaterialEstimate:
+    cutting_sheets: dict[str, int] = field(default_factory=dict)
+    vinyl_tape_length_cm: float = 0.0
+
+
+@dataclass(frozen=True)
 class CourseSolution:
     tangents: list[TangentSegment | None]
     arcs: list[ArcSegment | None]
@@ -79,3 +85,4 @@ class CourseSolution:
     corner_markers: list[CornerMarker] = field(default_factory=list)
     start_goal_segment: StartGoalSegment | None = None
     start_goal_markers: list[StartGoalMarker] = field(default_factory=list)
+    material_estimate: MaterialEstimate = field(default_factory=MaterialEstimate)

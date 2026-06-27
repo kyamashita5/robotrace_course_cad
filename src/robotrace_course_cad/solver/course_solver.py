@@ -5,6 +5,7 @@ from robotrace_course_cad.model.course_solution import CourseSolution, TangentSe
 from robotrace_course_cad.solver.arcs import MIN_SEGMENT_LENGTH_CM, arc_angle_for_turn, generate_arcs
 from robotrace_course_cad.solver.intersections import validate_intersections
 from robotrace_course_cad.solver.markers import generate_corner_markers, generate_start_goal_segment_and_markers
+from robotrace_course_cad.solver.materials import estimate_materials
 from robotrace_course_cad.solver.tangents import choose_tangent_closest_to_point, oriented_tangent_candidates_by_turn
 
 ZERO_LENGTH_TANGENT_EPSILON_CM = 1e-3
@@ -85,13 +86,23 @@ def solve_course(model: CourseModel) -> CourseSolution:
     solution = CourseSolution(tangents=tangents, arcs=arcs, issues=issues)
     issues.extend(validate_intersections(solution))
     start_goal_segment, start_goal_markers = generate_start_goal_segment_and_markers(model, tangents)
-    return CourseSolution(
+    corner_markers = generate_corner_markers(solution)
+    solution = CourseSolution(
         tangents=tangents,
         arcs=arcs,
         issues=issues,
-        corner_markers=generate_corner_markers(solution),
+        corner_markers=corner_markers,
         start_goal_segment=start_goal_segment,
         start_goal_markers=start_goal_markers,
+    )
+    return CourseSolution(
+        tangents=solution.tangents,
+        arcs=solution.arcs,
+        issues=solution.issues,
+        corner_markers=solution.corner_markers,
+        start_goal_segment=solution.start_goal_segment,
+        start_goal_markers=solution.start_goal_markers,
+        material_estimate=estimate_materials(solution),
     )
 
 
