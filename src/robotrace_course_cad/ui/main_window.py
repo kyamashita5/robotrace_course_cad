@@ -37,7 +37,38 @@ from robotrace_course_cad.solver.circle_adjust import (
     adjusted_center_touching_previous,
 )
 from robotrace_course_cad.solver.course_solver import solve_course
+from robotrace_course_cad.solver.materials import (
+    SHEET_MARKER,
+    SHEET_R10_90,
+    SHEET_R10_270,
+    SHEET_R15_90,
+    SHEET_R20_90,
+    SHEET_R25_90,
+    SHEET_R30_90,
+    SHEET_R50_60_SLALOM,
+)
 from robotrace_course_cad.ui.course_view import CourseView
+
+SHEET_LABELS = {
+    SHEET_R10_270: "R10 270deg arc",
+    SHEET_R10_90: "R10 90deg arc",
+    SHEET_R15_90: "R15 90deg arc",
+    SHEET_R20_90: "R20 90deg arc",
+    SHEET_R25_90: "R25 90deg arc",
+    SHEET_R30_90: "R30 90deg arc",
+    SHEET_R50_60_SLALOM: "R50 60cm slalom",
+    SHEET_MARKER: "Marker",
+}
+SHEET_DISPLAY_ORDER = [
+    SHEET_R10_270,
+    SHEET_R10_90,
+    SHEET_R15_90,
+    SHEET_R20_90,
+    SHEET_R25_90,
+    SHEET_R30_90,
+    SHEET_R50_60_SLALOM,
+    SHEET_MARKER,
+]
 
 
 class MainWindow(QMainWindow):
@@ -218,10 +249,13 @@ class MainWindow(QMainWindow):
         self._updating_table = False
 
     def refresh_issues(self) -> None:
+        lines = []
         if not self.solution.issues:
-            self.issue_label.setPlainText("No solver messages.")
-            return
-        self.issue_label.setPlainText("\n".join(f"{issue.severity.upper()}: {issue.message}" for issue in self.solution.issues))
+            lines.append("No solver messages.")
+        else:
+            lines.extend(f"{issue.severity.upper()}: {issue.message}" for issue in self.solution.issues)
+        lines.extend(format_material_estimate(self.solution.material_estimate.cutting_sheets, self.solution.material_estimate.vinyl_tape_length_cm))
+        self.issue_label.setPlainText("\n".join(lines))
 
     def open_json(self) -> None:
         start_dir = str(self.model_path.parent) if self.model_path else ""
@@ -513,6 +547,23 @@ def _readonly_item(value: str) -> QTableWidgetItem:
     item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
     item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
     return item
+
+
+def format_material_estimate(cutting_sheets: dict[str, int], vinyl_tape_length_cm: float) -> list[str]:
+    lines = ["", "Materials:", "  Cutting sheets:"]
+    sheet_lines = []
+    for sheet_name in SHEET_DISPLAY_ORDER:
+        count = cutting_sheets.get(sheet_name, 0)
+        if count:
+            sheet_lines.append(f"    {SHEET_LABELS[sheet_name]}: {count}")
+    for sheet_name, count in sorted(cutting_sheets.items()):
+        if sheet_name not in SHEET_LABELS and count:
+            sheet_lines.append(f"    {sheet_name}: {count}")
+    if not sheet_lines:
+        sheet_lines.append("    None")
+    lines.extend(sheet_lines)
+    lines.append(f"  Vinyl tape: {vinyl_tape_length_cm / 100.0:.2f} m")
+    return lines
 
 
 def _spin(minimum: float, maximum: float, value: float) -> QDoubleSpinBox:
