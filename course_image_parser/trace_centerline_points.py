@@ -71,6 +71,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--line-threshold", type=int, default=150)
     parser.add_argument("--white-threshold", type=int, default=245)
     parser.add_argument("--white-saturation-threshold", type=int, default=35)
+    parser.add_argument("--cyan-hue-min", type=int, default=80)
+    parser.add_argument("--cyan-hue-max", type=int, default=110)
+    parser.add_argument("--cyan-saturation-min", type=int, default=30)
+    parser.add_argument("--cyan-value-min", type=int, default=0)
     parser.add_argument("--erode-size", type=int, default=5)
     parser.add_argument("--dilate-size", type=int, default=5)
     parser.add_argument("--open-erode-size", type=int, default=5)
@@ -119,13 +123,22 @@ def extract_black_mask(
     mode: str = "black",
     white_threshold: int = 245,
     white_saturation_threshold: int = 35,
+    cyan_hue_min: int = 80,
+    cyan_hue_max: int = 110,
+    cyan_saturation_min: int = 30,
+    cyan_value_min: int = 0,
 ) -> np.ndarray:
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
     hue = hsv[:, :, 0]
     saturation = hsv[:, :, 1]
     value = hsv[:, :, 2]
 
-    cyan_like = (hue >= 80) & (hue <= 110) & (saturation >= 30)
+    cyan_like = (
+        (hue >= cyan_hue_min)
+        & (hue <= cyan_hue_max)
+        & (saturation >= cyan_saturation_min)
+        & (value >= cyan_value_min)
+    )
     if mode == "nonwhite-except-cyan":
         white_like = (value >= white_threshold) & (saturation <= white_saturation_threshold)
         mask = ~white_like & ~cyan_like
@@ -552,6 +565,10 @@ def main() -> None:
         mode=args.line_mask_mode,
         white_threshold=args.white_threshold,
         white_saturation_threshold=args.white_saturation_threshold,
+        cyan_hue_min=args.cyan_hue_min,
+        cyan_hue_max=args.cyan_hue_max,
+        cyan_saturation_min=args.cyan_saturation_min,
+        cyan_value_min=args.cyan_value_min,
     )
     open_erode_size = args.open_erode_size or args.erode_size
     open_dilate_size = args.open_dilate_size or args.dilate_size
