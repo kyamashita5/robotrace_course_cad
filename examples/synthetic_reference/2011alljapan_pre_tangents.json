@@ -1,0 +1,173 @@
+{
+  "tangents": [
+    {
+      "from_circle_id": 0,
+      "to_circle_id": 1,
+      "p_from": {
+        "x": 50.0,
+        "y": 370.0
+      },
+      "p_to": {
+        "x": 300.0,
+        "y": 370.0
+      },
+      "length_cm": 250.0
+    },
+    {
+      "from_circle_id": 1,
+      "to_circle_id": 2,
+      "p_from": {
+        "x": 330.0,
+        "y": 340.000009692
+      },
+      "p_to": {
+        "x": 330.000021,
+        "y": 275.000004846
+      },
+      "length_cm": 65.000004846
+    },
+    {
+      "from_circle_id": 2,
+      "to_circle_id": 3,
+      "p_from": {
+        "x": 315.000021,
+        "y": 260.0
+      },
+      "p_to": {
+        "x": 140.0,
+        "y": 260.0
+      },
+      "length_cm": 175.000021
+    },
+    {
+      "from_circle_id": 3,
+      "to_circle_id": 4,
+      "p_from": {
+        "x": 140.0,
+        "y": 220.0
+      },
+      "p_to": {
+        "x": 315.0,
+        "y": 220.0
+      },
+      "length_cm": 175.0
+    },
+    {
+      "from_circle_id": 4,
+      "to_circle_id": 5,
+      "p_from": {
+        "x": 315.0,
+        "y": 180.0
+      },
+      "p_to": {
+        "x": 125.0,
+        "y": 180.0
+      },
+      "length_cm": 190.0
+    },
+    {
+      "from_circle_id": 5,
+      "to_circle_id": 6,
+      "p_from": {
+        "x": 110.0,
+        "y": 165.0
+      },
+      "p_to": {
+        "x": 110.0,
+        "y": 100.0
+      },
+      "length_cm": 65.0
+    },
+    {
+      "from_circle_id": 6,
+      "to_circle_id": 7,
+      "p_from": {
+        "x": 170.0,
+        "y": 100.0
+      },
+      "p_to": {
+        "x": 170.0,
+        "y": 315.0
+      },
+      "length_cm": 215.0
+    },
+    {
+      "from_circle_id": 7,
+      "to_circle_id": 8,
+      "p_from": {
+        "x": 210.0,
+        "y": 315.0
+      },
+      "p_to": {
+        "x": 210.0,
+        "y": 100.0
+      },
+      "length_cm": 215.0
+    },
+    {
+      "from_circle_id": 8,
+      "to_circle_id": 9,
+      "p_from": {
+        "x": 233.0,
+        "y": 87.31142246
+      },
+      "p_to": {
+        "x": 286.666666667,
+        "y": 121.147629234
+      },
+      "length_cm": 63.442887702
+    },
+    {
+      "from_circle_id": 9,
+      "to_circle_id": 10,
+      "p_from": {
+        "x": 311.754307456,
+        "y": 77.93563379
+      },
+      "p_to": {
+        "x": 311.75422851,
+        "y": 77.935591733
+      },
+      "length_cm": 8.945e-05
+    },
+    {
+      "from_circle_id": 10,
+      "to_circle_id": 11,
+      "p_from": {
+        "x": 304.254249967,
+        "y": 61.060640108
+      },
+      "p_to": {
+        "x": 304.254271692,
+        "y": 61.060553165
+      },
+      "length_cm": 8.9616e-05
+    },
+    {
+      "from_circle_id": 11,
+      "to_circle_id": 12,
+      "p_from": {
+        "x": 280.0,
+        "y": 30.0
+      },
+      "p_to": {
+        "x": 50.0,
+        "y": 30.0
+      },
+      "length_cm": 230.0
+    },
+    {
+      "from_circle_id": 12,
+      "to_circle_id": 0,
+      "p_from": {
+        "x": 30.0,
+        "y": 50.0
+      },
+      "p_to": {
+        "x": 30.0,
+        "y": 350.0
+      },
+      "length_cm": 300.0
+    }
+  ]
+}
