@@ -228,6 +228,33 @@ If the trace fails to reach the goal or visibly leaves the line, do not silently
 
 When reporting this failure, suggest `--line-mask-mode nonwhite-except-cyan` as the next targeted retry when colored or gray annotations appear to be breaking the black-line mask. Explain that this mode keeps non-white marks while removing cyan board/grid contour lines, which can preserve black-line continuity through red or gray overprint areas. Do not run this retry until the user explicitly asks for it.
 
+For the first `nonwhite-except-cyan` retry, do not pass any `--cyan-*` threshold options. With no `--cyan-*` options, `trace_centerline_points.py` uses its built-in broad cyan-removal defaults:
+
+- `--cyan-hue-min 80`
+- `--cyan-hue-max 110`
+- `--cyan-saturation-min 30`
+- `--cyan-value-min 0`
+
+This first retry preserves the ordinary workflow behavior while changing only the line-mask mode. If that retry still fails and the trace appears to break where a cyan board/grid line overlaps the black course line, suggest a second targeted retry that reduces cyan false positives on dark pixels:
+
+```bash
+uv run --project course_image_parser python course_image_parser/trace_centerline_points.py \
+  data/<name>.png \
+  --start-cm <start_x>,<start_y> \
+  --goal-cm <goal_x>,<goal_y> \
+  --out-dir tmp/<name>/centerline_trace_nonwhite_except_cyan_tuned_cyan \
+  --board-out-dir tmp/<name>/extracted_course_boards \
+  --start-goal-out-dir tmp/<name>/start_goal_detection \
+  --name <name> \
+  --line-mask-mode nonwhite-except-cyan \
+  --cyan-hue-min 90 \
+  --cyan-hue-max 105 \
+  --cyan-saturation-min 60 \
+  --cyan-value-min 130
+```
+
+These tuned cyan thresholds are intentionally not the default. The ordinary default trace and the first `nonwhite-except-cyan` retry should continue to omit `--cyan-*` options and therefore use the built-in broad cyan condition listed above. The tuned retry should be used only after the failure evidence points to cyan being misdetected on top of the black course line.
+
 ### 6. Fit line/arc path and preserve arc geometry
 
 If the board interpretation, start/goal interpretation, and centerline trace look acceptable, continue automatically to line/arc fitting.
