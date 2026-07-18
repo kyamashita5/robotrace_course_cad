@@ -24,10 +24,12 @@ git status --short
 
 2. Generate examples and reference files with the bundled script.
 
-Pass course names without `.json`; each name must exist as `data/<name>.json` unless `--source-dir` is specified.
+Pass course names without `.json`. The positional `<name>` is both the source lookup basename and the destination/reference stem. For every requested name, the script requires `<source-dir>/<name>.json`; `--source-dir` changes only the directory and does not allow an arbitrary source filename.
+
+Before running the generator, verify that each expected source path exists. If a completed artifact has a descriptive suffix such as `<name>_course_cad_model.json`, place a copy or symlink named `<name>.json` in a temporary source directory and pass that directory with `--source-dir`. Do not pass the descriptive basename as the course name unless that is also the intended filename under `examples/synthetic/`.
 
 ```bash
-PYTHONPATH=src .venv/bin/python skills/robotrace-synthetic-reference/scripts/generate_synthetic_reference.py 2023kansai 2024kansai 2025kansai
+PYTHONPATH=src .venv/bin/python .agents/skills/robotrace-synthetic-reference/scripts/generate_synthetic_reference.py 2023kansai 2024kansai 2025kansai
 ```
 
 The script copies each input JSON to `examples/synthetic/<name>.json`, solves it, and writes:
