@@ -73,6 +73,46 @@ class CourseRuleValidationTest(unittest.TestCase):
 
         issue = find_issue(issues, "Start/goal lines should have 10 cm straight clearance")
         self.assertEqual(issue.severity, "warning")
+        self.assertEqual(len(issue.segments), 2)
+        self.assertEqual(issue.segments[0].kind, "start_goal_clearance")
+        self.assertEqual(issue.segments[0].p_start, Vec2(-50.0, 0.0))
+        self.assertEqual(issue.segments[0].p_end, Vec2(-60.0, 0.0))
+        self.assertEqual(issue.segments[1].p_start, Vec2(50.0, 0.0))
+        self.assertEqual(issue.segments[1].p_end, Vec2(60.0, 0.0))
+
+    def test_start_goal_clearance_warning_highlights_only_failing_sides(self) -> None:
+        issues = validate_course_rules(
+            CourseModel(),
+            tangents=[line(Vec2(-54.0, 0.0), Vec2(70.0, 0.0))],
+            arcs=[],
+            start_goal_segment=normal_start_goal_segment(),
+        )
+
+        issue = find_issue(issues, "Start/goal lines should have 10 cm straight clearance")
+        self.assertEqual(len(issue.segments), 1)
+        self.assertEqual(issue.segments[0].p_start, Vec2(-50.0, 0.0))
+        self.assertEqual(issue.segments[0].p_end, Vec2(-60.0, 0.0))
+
+    def test_start_goal_clearance_segments_extend_outward_when_start_goal_is_outside_tangent(self) -> None:
+        issues = validate_course_rules(
+            CourseModel(),
+            tangents=[line(Vec2(0.0, 0.0), Vec2(20.0, 0.0))],
+            arcs=[],
+            start_goal_segment=StartGoalSegment(
+                center=Vec2(100.0, 0.0),
+                p_start=Vec2(50.0, 0.0),
+                p_end=Vec2(150.0, 0.0),
+                tangent_angle_deg=0.0,
+                length=100.0,
+            ),
+        )
+
+        issue = find_issue(issues, "Start/goal lines should have 10 cm straight clearance")
+        self.assertEqual(len(issue.segments), 2)
+        self.assertEqual(issue.segments[0].p_start, Vec2(50.0, 0.0))
+        self.assertEqual(issue.segments[0].p_end, Vec2(40.0, 0.0))
+        self.assertEqual(issue.segments[1].p_start, Vec2(150.0, 0.0))
+        self.assertEqual(issue.segments[1].p_end, Vec2(160.0, 0.0))
 
     def test_normal_start_goal_segment_has_no_start_goal_warning(self) -> None:
         issues = validate_course_rules(

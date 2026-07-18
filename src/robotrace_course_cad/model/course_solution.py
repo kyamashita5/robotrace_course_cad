@@ -64,11 +64,33 @@ class StartGoalMarker:
 
 
 @dataclass(frozen=True)
+class IssueHighlight:
+    kind: str
+    index: int
+
+
+@dataclass(frozen=True)
+class IssueMarker:
+    point: Vec2
+    kind: str = "x"
+
+
+@dataclass(frozen=True)
+class IssueSegment:
+    p_start: Vec2
+    p_end: Vec2
+    kind: str = "line"
+
+
+@dataclass(frozen=True)
 class ValidationIssue:
     severity: str
     message: str
     related_circle_ids: list[int] = field(default_factory=list)
     related_connection_ids: list[int] = field(default_factory=list)
+    highlights: list[IssueHighlight] = field(default_factory=list)
+    markers: list[IssueMarker] = field(default_factory=list)
+    segments: list[IssueSegment] = field(default_factory=list)
 
 
 @dataclass(frozen=True)

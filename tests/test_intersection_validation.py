@@ -45,6 +45,11 @@ class IntersectionValidationTest(unittest.TestCase):
         issues = validate_intersections(solution)
 
         self.assertTrue(any("Invalid line-line crossing" in issue.message for issue in issues))
+        issue = find_issue(issues, "Invalid line-line crossing")
+        self.assertEqual([(highlight.kind, highlight.index) for highlight in issue.highlights], [("tangent", 0), ("tangent", 2)])
+        self.assertEqual(len(issue.markers), 1)
+        self.assertAlmostEqual(issue.markers[0].point.x, 0.0)
+        self.assertAlmostEqual(issue.markers[0].point.y, 0.0)
 
     def test_line_crossing_too_close_to_endpoint_is_invalid(self) -> None:
         solution = CourseSolution(
@@ -104,7 +109,9 @@ class IntersectionValidationTest(unittest.TestCase):
 
         issues = validate_intersections(solution)
 
-        self.assertTrue(any("intersects an arc" in issue.message for issue in issues))
+        issue = find_issue(issues, "intersects an arc")
+        self.assertEqual([(highlight.kind, highlight.index) for highlight in issue.highlights], [("tangent", 0), ("arc", 2)])
+        self.assertTrue(issue.markers)
 
     def test_zero_length_tangent_between_touching_arcs_is_not_warned(self) -> None:
         solution = solve_course(load_course_model("examples/synthetic/2019kansai.json"))
@@ -123,6 +130,8 @@ class IntersectionValidationTest(unittest.TestCase):
 
         self.assertEqual(short_tangent_warnings(ten_cm_solution), [])
         self.assertTrue(short_tangent_warnings(nine_nine_cm_solution))
+        issue = short_tangent_issues(nine_nine_cm_solution)[0]
+        self.assertEqual([(highlight.kind, highlight.index) for highlight in issue.highlights], [("tangent", 0)])
 
 
 def line(from_id: int, to_id: int, start: Vec2, end: Vec2) -> TangentSegment:
@@ -151,6 +160,21 @@ def short_tangent_warnings(solution: CourseSolution) -> list[str]:
         for issue in solution.issues
         if issue.severity == "warning" and issue.message.startswith("Tangent ") and " is short " in issue.message
     ]
+
+
+def short_tangent_issues(solution: CourseSolution):
+    return [
+        issue
+        for issue in solution.issues
+        if issue.severity == "warning" and issue.message.startswith("Tangent ") and " is short " in issue.message
+    ]
+
+
+def find_issue(issues, message_part: str):
+    for issue in issues:
+        if message_part in issue.message:
+            return issue
+    raise AssertionError(f"No issue contained {message_part!r}. Issues: {[issue.message for issue in issues]}")
 
 
 if __name__ == "__main__":

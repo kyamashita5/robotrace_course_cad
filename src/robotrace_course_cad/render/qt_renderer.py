@@ -84,6 +84,7 @@ def render_course(
     _draw_helper_connections(scene, model)
     _draw_helper_circles(scene, model, on_circle_changed, on_circle_selected, selected_circle_id)
     _draw_start_goal_hint(scene, model)
+    _draw_validation_overlays(scene, solution)
 
 
 def _course_scene_rect(model: CourseModel, solution: CourseSolution, margin_cm: float = 80.0) -> QRectF:
@@ -415,3 +416,115 @@ def _draw_start_goal_hint(scene: QGraphicsScene, model: CourseModel) -> None:
     label.setPos(p.x() + 9, p.y() + 2)
     label.setZValue(31)
     scene.addItem(label)
+
+
+def _draw_validation_overlays(scene: QGraphicsScene, solution: CourseSolution) -> None:
+    for issue in solution.issues:
+        if issue.severity not in {"error", "warning"}:
+            continue
+
+        color = QColor("#d12f2f") if issue.severity == "error" else QColor("#f0a202")
+        pen = QPen(color, 5.0 if issue.severity == "error" else 4.0)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+
+        for highlight in issue.highlights:
+            if highlight.kind == "tangent":
+                _draw_issue_tangent_highlight(scene, solution, highlight.index, pen, issue.message)
+            elif highlight.kind == "arc":
+                _draw_issue_arc_highlight(scene, solution, highlight.index, pen, issue.message)
+            elif highlight.kind == "circle":
+                _draw_issue_circle_highlight(scene, solution, highlight.index, pen, issue.message)
+
+        for marker in issue.markers:
+            if marker.kind == "x":
+                _draw_issue_x_marker(scene, marker.point, color, issue.message)
+
+        for segment in issue.segments:
+            _draw_issue_segment(scene, segment.p_start, segment.p_end, color, issue.message)
+
+
+def _draw_issue_tangent_highlight(
+    scene: QGraphicsScene,
+    solution: CourseSolution,
+    index: int,
+    pen: QPen,
+    tooltip: str,
+) -> None:
+    if index < 0 or index >= len(solution.tangents):
+        return
+    tangent = solution.tangents[index]
+    if tangent is None:
+        return
+
+    a = to_scene(tangent.p_from)
+    b = to_scene(tangent.p_to)
+    item = scene.addLine(a.x(), a.y(), b.x(), b.y(), pen)
+    item.setZValue(60)
+    item.setToolTip(tooltip)
+
+
+def _draw_issue_arc_highlight(
+    scene: QGraphicsScene,
+    solution: CourseSolution,
+    index: int,
+    pen: QPen,
+    tooltip: str,
+) -> None:
+    if index < 0 or index >= len(solution.arcs):
+        return
+    arc = solution.arcs[index]
+    if arc is None:
+        return
+
+    item = QGraphicsPathItem(_arc_path(arc))
+    item.setPen(pen)
+    item.setZValue(60)
+    item.setToolTip(tooltip)
+    scene.addItem(item)
+
+
+def _draw_issue_circle_highlight(
+    scene: QGraphicsScene,
+    solution: CourseSolution,
+    index: int,
+    pen: QPen,
+    tooltip: str,
+) -> None:
+    if index < 0 or index >= len(solution.arcs):
+        return
+    arc = solution.arcs[index]
+    if arc is None:
+        return
+
+    rect = QRectF(
+        (arc.center.x - arc.radius) * CM_TO_SCENE,
+        -(arc.center.y + arc.radius) * CM_TO_SCENE,
+        arc.radius * 2.0 * CM_TO_SCENE,
+        arc.radius * 2.0 * CM_TO_SCENE,
+    )
+    item = scene.addEllipse(rect, pen)
+    item.setZValue(59)
+    item.setToolTip(tooltip)
+
+
+def _draw_issue_x_marker(scene: QGraphicsScene, point: Vec2, color: QColor, tooltip: str) -> None:
+    center = to_scene(point)
+    size = 7.0
+    pen = QPen(color, 2.6)
+    first = scene.addLine(center.x() - size, center.y() - size, center.x() + size, center.y() + size, pen)
+    second = scene.addLine(center.x() - size, center.y() + size, center.x() + size, center.y() - size, pen)
+    for item in (first, second):
+        item.setZValue(65)
+        item.setToolTip(tooltip)
+
+
+def _draw_issue_segment(scene: QGraphicsScene, p_start: Vec2, p_end: Vec2, color: QColor, tooltip: str) -> None:
+    pen = QPen(color, 5.0)
+    pen.setStyle(Qt.PenStyle.DashLine)
+    pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+    a = to_scene(p_start)
+    b = to_scene(p_end)
+    item = scene.addLine(a.x(), a.y(), b.x(), b.y(), pen)
+    item.setZValue(62)
+    item.setToolTip(tooltip)

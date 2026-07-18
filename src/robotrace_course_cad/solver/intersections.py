@@ -4,7 +4,14 @@ from dataclasses import dataclass
 import math
 
 from robotrace_course_cad.model.course_model import Turn
-from robotrace_course_cad.model.course_solution import ArcSegment, CourseSolution, TangentSegment, ValidationIssue
+from robotrace_course_cad.model.course_solution import (
+    ArcSegment,
+    CourseSolution,
+    IssueHighlight,
+    IssueMarker,
+    TangentSegment,
+    ValidationIssue,
+)
 from robotrace_course_cad.model.geometry import EPSILON, TAU, Vec2, angle_ccw, angle_cw, point_angle
 
 ANGLE_TOLERANCE_DEG = 5.0
@@ -130,6 +137,7 @@ def validate_line_line_intersection(first: PathSegment, second: PathSegment) -> 
             first,
             second,
             severity="info",
+            marker_points=[point],
         )
 
     return intersection_issue(
@@ -139,6 +147,7 @@ def validate_line_line_intersection(first: PathSegment, second: PathSegment) -> 
         ),
         first,
         second,
+        marker_points=[point],
     )
 
 
@@ -148,7 +157,7 @@ def validate_line_arc_intersection(line: PathSegment, arc_segment: PathSegment) 
     if not intersections:
         return None
 
-    return intersection_issue("Line segment intersects an arc segment", line, arc_segment)
+    return intersection_issue("Line segment intersects an arc segment", line, arc_segment, marker_points=intersections)
 
 
 def validate_arc_arc_intersection(first: PathSegment, second: PathSegment) -> ValidationIssue | None:
@@ -158,16 +167,30 @@ def validate_arc_arc_intersection(first: PathSegment, second: PathSegment) -> Va
     if not intersections:
         return None
 
-    return intersection_issue("Arc segment intersects another arc segment", first, second)
+    return intersection_issue("Arc segment intersects another arc segment", first, second, marker_points=intersections)
 
 
-def intersection_issue(message: str, first: PathSegment, second: PathSegment, severity: str = "error") -> ValidationIssue:
+def intersection_issue(
+    message: str,
+    first: PathSegment,
+    second: PathSegment,
+    severity: str = "error",
+    marker_points: list[Vec2] | None = None,
+) -> ValidationIssue:
     return ValidationIssue(
         severity=severity,
         message=f"{message} ({first.kind} {first.index} vs {second.kind} {second.index})",
         related_circle_ids=unique(first.related_circle_ids + second.related_circle_ids),
         related_connection_ids=unique(first.related_connection_ids + second.related_connection_ids),
+        highlights=[highlight_for_segment(first), highlight_for_segment(second)],
+        markers=[IssueMarker(point) for point in marker_points or []],
     )
+
+
+def highlight_for_segment(segment: PathSegment) -> IssueHighlight:
+    if segment.kind == "line":
+        return IssueHighlight("tangent", segment.index)
+    return IssueHighlight("arc", segment.index)
 
 
 def line_line_intersection(a: Vec2, b: Vec2, c: Vec2, d: Vec2) -> LineLineIntersection | None:

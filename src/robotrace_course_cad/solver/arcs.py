@@ -3,10 +3,11 @@ from __future__ import annotations
 import math
 
 from robotrace_course_cad.model.course_model import HelperCircle, Turn
-from robotrace_course_cad.model.course_solution import ArcSegment, TangentSegment, ValidationIssue
+from robotrace_course_cad.model.course_solution import ArcSegment, IssueHighlight, IssueMarker, TangentSegment, ValidationIssue
 from robotrace_course_cad.model.geometry import TAU, angle_ccw, angle_cw, point_angle
 
 MIN_SEGMENT_LENGTH_CM = 10.0
+MIN_VISIBLE_ISSUE_ARC_LENGTH_CM = 0.5
 FULL_CIRCLE_EPSILON_RAD = math.radians(3.0)
 
 
@@ -56,12 +57,19 @@ def generate_arcs(
         )
 
         if length <= MIN_SEGMENT_LENGTH_CM:
+            highlights = [IssueHighlight("arc", i)]
+            markers = []
+            if length < MIN_VISIBLE_ISSUE_ARC_LENGTH_CM:
+                highlights.append(IssueHighlight("circle", i))
+                markers.append(IssueMarker(prev_tangent.p_to))
             issues.append(
                 ValidationIssue(
                     severity="warning",
                     message=f"Arc on circle {circle.id} is short ({length:.1f} cm)",
                     related_circle_ids=[circle.id],
                     related_connection_ids=[prev_index, i],
+                    highlights=highlights,
+                    markers=markers,
                 )
             )
         if angle_rad >= TAU - FULL_CIRCLE_EPSILON_RAD:
