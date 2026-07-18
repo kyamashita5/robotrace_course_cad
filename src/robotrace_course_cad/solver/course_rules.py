@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from robotrace_course_cad.model.course_model import CourseModel
-from robotrace_course_cad.model.course_solution import ArcSegment, StartGoalSegment, TangentSegment, ValidationIssue
+from robotrace_course_cad.model.course_solution import ArcSegment, IssueSegment, StartGoalSegment, TangentSegment, ValidationIssue
 from robotrace_course_cad.model.geometry import EPSILON, Vec2
 
 EXPECTED_LINE_WIDTH_CM = 1.9
@@ -120,6 +120,7 @@ def validate_start_goal_straight_clearance(
                 "Start/goal lines should have 10 cm straight clearance before and after each line "
                 f"(clearances: {details})"
             ),
+            segments=start_goal_clearance_issue_segments(start_goal_segment, start_goal_tangent),
         )
     ]
 
@@ -138,6 +139,56 @@ def line_clearance_on_tangent(point: Vec2, tangent: TangentSegment) -> float | N
     if distance_from_start < -RULE_TOLERANCE_CM or distance_from_end < -RULE_TOLERANCE_CM:
         return None
     return min(distance_from_start, distance_from_end)
+
+
+def start_goal_clearance_issue_segments(
+    start_goal_segment: StartGoalSegment,
+    tangent: TangentSegment,
+) -> list[IssueSegment]:
+    tangent_delta = tangent.p_to - tangent.p_from
+    if tangent_delta.norm() < EPSILON:
+        return []
+
+    direction = tangent_delta.normalized()
+    segments: list[IssueSegment] = []
+    for point, clearance_direction in (
+        (start_goal_segment.p_start, direction * -1.0),
+        (start_goal_segment.p_end, direction),
+    ):
+        segment = start_goal_clearance_issue_segment(point, tangent, clearance_direction)
+        if segment is not None:
+            segments.append(segment)
+    return segments
+
+
+def start_goal_clearance_issue_segment(
+    point: Vec2,
+    tangent: TangentSegment,
+    clearance_direction: Vec2,
+) -> IssueSegment | None:
+    tangent_delta = tangent.p_to - tangent.p_from
+    tangent_length = tangent_delta.norm()
+    if tangent_length < EPSILON:
+        return None
+
+    direction = tangent_delta.normalized()
+    distance_from_start = (point - tangent.p_from).dot(direction)
+    projected = tangent.p_from + direction * distance_from_start
+    distance_from_end = tangent_length - distance_from_start
+
+    if point.distance_to(projected) > RULE_TOLERANCE_CM:
+        return None
+
+    if distance_from_start < -RULE_TOLERANCE_CM or distance_from_end < -RULE_TOLERANCE_CM:
+        available = 0.0
+    elif clearance_direction.dot(direction) < 0.0:
+        available = distance_from_start
+    else:
+        available = distance_from_end
+
+    if available >= MIN_START_GOAL_STRAIGHT_CM - RULE_TOLERANCE_CM:
+        return None
+    return IssueSegment(point, point + clearance_direction * MIN_START_GOAL_STRAIGHT_CM, "start_goal_clearance")
 
 
 def format_clearance(clearance: float | None) -> str:

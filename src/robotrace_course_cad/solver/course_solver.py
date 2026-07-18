@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from robotrace_course_cad.model.course_model import CourseModel, HelperCircle
-from robotrace_course_cad.model.course_solution import CourseSolution, TangentSegment, ValidationIssue
+from robotrace_course_cad.model.course_solution import CourseSolution, IssueHighlight, TangentSegment, ValidationIssue
 from robotrace_course_cad.solver.arcs import MIN_SEGMENT_LENGTH_CM, arc_angle_for_turn, generate_arcs
 from robotrace_course_cad.solver.course_rules import validate_course_rules
 from robotrace_course_cad.solver.intersections import validate_intersections
@@ -73,6 +73,7 @@ def solve_course(model: CourseModel) -> CourseSolution:
                     message=f"Tangent {i} is short ({tangent.length:.1f} cm)",
                     related_circle_ids=[tangent.from_circle_id, tangent.to_circle_id],
                     related_connection_ids=[i],
+                    highlights=[IssueHighlight("tangent", i)],
                 )
             )
 
