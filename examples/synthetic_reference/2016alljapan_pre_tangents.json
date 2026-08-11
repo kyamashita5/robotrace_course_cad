@@ -1,0 +1,160 @@
+{
+  "tangents": [
+    {
+      "from_circle_id": 0,
+      "to_circle_id": 1,
+      "p_from": {
+        "x": 353.616110283,
+        "y": 115.35071535
+      },
+      "p_to": {
+        "x": 312.020137854,
+        "y": 76.688394188
+      },
+      "length_cm": 56.789083458
+    },
+    {
+      "from_circle_id": 1,
+      "to_circle_id": 2,
+      "p_from": {
+        "x": 313.255049007,
+        "y": 112.080784108
+      },
+      "p_to": {
+        "x": 353.093941192,
+        "y": 69.50305907
+      },
+      "length_cm": 58.309518948
+    },
+    {
+      "from_circle_id": 2,
+      "to_circle_id": 3,
+      "p_from": {
+        "x": 375.0,
+        "y": 60.0
+      },
+      "p_to": {
+        "x": 490.0,
+        "y": 60.0
+      },
+      "length_cm": 115.0
+    },
+    {
+      "from_circle_id": 3,
+      "to_circle_id": 4,
+      "p_from": {
+        "x": 490.0,
+        "y": 30.0
+      },
+      "p_to": {
+        "x": 300.0,
+        "y": 30.0
+      },
+      "length_cm": 190.0
+    },
+    {
+      "from_circle_id": 4,
+      "to_circle_id": 5,
+      "p_from": {
+        "x": 285.0,
+        "y": 29.624765332
+      },
+      "p_to": {
+        "x": 285.0,
+        "y": 29.624765332
+      },
+      "length_cm": 0.0
+    },
+    {
+      "from_circle_id": 5,
+      "to_circle_id": 6,
+      "p_from": {
+        "x": 255.0,
+        "y": 29.624765332
+      },
+      "p_to": {
+        "x": 255.0,
+        "y": 29.624765332
+      },
+      "length_cm": 0.0
+    },
+    {
+      "from_circle_id": 6,
+      "to_circle_id": 7,
+      "p_from": {
+        "x": 240.0,
+        "y": 30.0
+      },
+      "p_to": {
+        "x": 160.0,
+        "y": 30.0
+      },
+      "length_cm": 80.0
+    },
+    {
+      "from_circle_id": 7,
+      "to_circle_id": 8,
+      "p_from": {
+        "x": 145.0,
+        "y": 29.624765332
+      },
+      "p_to": {
+        "x": 145.0,
+        "y": 29.624765332
+      },
+      "length_cm": 0.0
+    },
+    {
+      "from_circle_id": 8,
+      "to_circle_id": 9,
+      "p_from": {
+        "x": 115.0,
+        "y": 29.624765332
+      },
+      "p_to": {
+        "x": 115.0,
+        "y": 29.624765332
+      },
+      "length_cm": 0.0
+    },
+    {
+      "from_circle_id": 9,
+      "to_circle_id": 10,
+      "p_from": {
+        "x": 100.0,
+        "y": 30.0
+      },
+      "p_to": {
+        "x": 50.0,
+        "y": 30.0
+      },
+      "length_cm": 50.0
+    },
+    {
+      "from_circle_id": 10,
+      "to_circle_id": 11,
+      "p_from": {
+        "x": 30.0,
+        "y": 50.0
+      },
+      "p_to": {
+        "x": 30.0,
+        "y": 140.0
+      },
+      "length_cm": 90.0
+    },
+    {
+      "from_circle_id": 11,
+      "to_circle_id": 0,
+      "p_from": {
+        "x": 40.0,
+        "y": 150.0
+      },
+      "p_to": {
+        "x": 340.0,
+        "y": 150.0
+      },
+      "length_cm": 300.0
+    }
+  ]
+}

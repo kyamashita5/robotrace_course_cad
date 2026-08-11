@@ -403,6 +403,27 @@ The slalom detector is intentionally permissive before postfiltering, but the no
 
 Important: dashed guide frames, small marker marks, and printed marker rows are normal evidence for a drawn slalom template. Do not reject a slalom candidate merely because it is surrounded by a dashed frame or includes marker-like printed elements. Those features may be exactly why the template is present in the drawing.
 
+#### Distinguish slalom radii and construct three-circle slaloms
+
+`detect_slalom_template.py` detects only the R50/60 cm template. Do not interpret every 60 cm slalom span as R50, and do not treat `candidate_count: 0` as proof that no slalom is present. Read the printed radius annotation and endpoint coordinates before selecting a geometry.
+
+When a drawing explicitly labels a different slalom radius, OCR its printed endpoints as standalone coordinates in the normal red-text stage even though the R50 detector cannot match the pattern. Preserve endpoint order as course travel order rather than sorting coordinates numerically.
+
+After the mandatory pause, when the user explicitly confirms a three-circle slalom with helper-circle radius `R`, span `L`, and asks for manual completion, first require `L / 2 <= 2R`, then compute:
+
+- `touch_lateral = sqrt((2R)^2 - (L / 2)^2)`
+- `middle_offset = touch_lateral - R`
+
+For a right-to-left horizontal pattern from `(x_start, y)` to `(x_start - L, y)` with its first deflection below the baseline, use:
+
+- first center: `(x_start, y - R)`, turn `ccw`
+- middle center: `(x_start - L / 2, y + middle_offset)`, turn `cw`
+- third center: `(x_start - L, y - R)`, turn `ccw`
+
+Rotate this local construction into the endpoint travel direction for non-horizontal slaloms. Mirror the normal offsets and swap turns only when the drawing explicitly shows the opposite initial deflection. This construction makes adjacent equal-radius helper circles tangent. For `R=300 cm` and `L=60 cm`, `middle_offset=299.2495306631454 cm`; a committed reference is `examples/synthetic/2015alljapan_pre.json`.
+
+Insert the three-circle groups in actual course travel order. Validate the completed CAD JSON with `solve_course()` and visually confirm that each slalom starts and ends at the printed coordinates. Large-radius helper-circle centers outside the board are expected.
+
 ### 9. Extract red design text only
 
 Use the `line-design-info-extractor` skill to perform AI-assisted OCR of red printed design information. In the later workflow, AI image recognition is used only for reading red text. Do not ask AI to decide whether support-circle candidates or slalom candidates are valid, do not ask AI to merge geometry candidates, and do not ask AI to choose the final helper-circle list. Those decisions are handled by `detect_support_circles.py`, `detect_slalom_template.py`, and `consolidate_design_candidates.py`.
@@ -666,6 +687,8 @@ Before stopping, make sure all of the following are true:
 - support-circle candidates were generated when red/magenta helper-circle annotations are present or suspected
 - `magenta_overlay.png` was inspected to confirm that red support-circle annotations were actually extracted
 - R50/60 slalom candidates were generated when slalom templates are present or suspected
+- the printed slalom radius was checked before treating a 60 cm span as an R50/60 template
+- user-confirmed non-R50 three-circle slaloms were added only after the mandatory pause and validated against their printed radius and endpoints
 - slalom candidate filtering was handled by `detect_slalom_template.py` and `consolidate_design_candidates.py`, not by AI judgment
 - red text near top support-circle and slalom areas was OCR'd for radius, center, and endpoint coordinates
 - visible printed slalom endpoint coordinates were read as text hypotheses; detector-derived fractional template coordinates were not treated as text reads

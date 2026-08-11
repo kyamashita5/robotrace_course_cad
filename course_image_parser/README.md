@@ -5,8 +5,7 @@
 ## 目的
 
 - OpenCV 系の依存関係を CAD 本体の環境から分離する。
-- 既存の `codex_scripts/` はそのまま使う。
-	これらのスクリプトは現在 `data/` や `tmp/` をリポジトリルート基準で参照しているためです。
+- `course_image_parser/` の画像解析スクリプトを専用環境で実行する。
 
 ## 環境の作成・更新
 
@@ -18,33 +17,21 @@ uv sync --project course_image_parser
 
 これにより、専用環境が `course_image_parser/.venv` に作成されます。
 
-## 専用環境で既存スクリプトを実行する
+## 専用環境で解析スクリプトを実行する
 
-既存スクリプトの相対パス前提を保つため、実行はリポジトリルートで行ってください。
+`data/` や `tmp/` の相対パスを安定させるため、実行はリポジトリルートで行ってください。
 
 ```bash
-uv run --project course_image_parser python codex_scripts/normalize_course_image.py --help
-uv run --project course_image_parser python codex_scripts/rectify_circle_probe.py
+uv run --project course_image_parser python course_image_parser/extract_course_board.py --help
 ```
 
 または、専用環境の Python を直接使っても構いません。
 
 ```bash
-course_image_parser/.venv/bin/python codex_scripts/normalize_course_image.py --help
+course_image_parser/.venv/bin/python course_image_parser/extract_course_board.py --help
 ```
 
-## 板領域の切り出し
+## 画像解析ワークフロー
 
-改善版の板切り出しスクリプトは `course_image_parser/extract_course_board.py` です。
-
-- 寸法が未指定でも、候補板サイズから縦横比で寸法を推定します。
-- 板輪郭色はデフォルトでシアンを想定し、`--board-color black` で黒輪郭にも対応できます。
-- `--board-color auto` を指定すると、シアンと黒の両方を試してスコアの高い候補を採用します。
-
-例:
-
-```bash
-uv run --project course_image_parser python course_image_parser/extract_course_board.py path/to/image.png
-uv run --project course_image_parser python course_image_parser/extract_course_board.py path/to/image.png --board-color black
-uv run --project course_image_parser python course_image_parser/extract_course_board.py path/to/image.png --board-color auto
-```
+板領域の切り出しからコースデータ候補の生成までの手順は、
+[course-image-parser スキル](../.agents/skills/course-image-parser/SKILL.md)を参照してください。
