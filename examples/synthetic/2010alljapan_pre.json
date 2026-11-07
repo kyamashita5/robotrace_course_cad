@@ -1,0 +1,176 @@
+{
+  "board": {
+    "width_cm": 360.0,
+    "height_cm": 405.0
+  },
+  "line_width_cm": 1.9,
+  "min_edge_margin_cm": 20.0,
+  "grid": {
+    "origin_x_cm": 0.0,
+    "origin_y_cm": 0.0,
+    "cell_width_cm": 90.0,
+    "cell_height_cm": 135.0
+  },
+  "radius_presets_cm": [
+    10.0,
+    15.0,
+    20.0,
+    25.0,
+    30.0,
+    35.0,
+    40.0,
+    50.0
+  ],
+  "start_goal_hint": {
+    "x": 30.0,
+    "y": 205.0,
+    "length": 100.0
+  },
+  "circles": [
+    {
+      "id": 0,
+      "x": 50.0,
+      "y": 350.0,
+      "r": 20.0,
+      "turn": "cw",
+      "locked": false
+    },
+    {
+      "id": 1,
+      "x": 120.0,
+      "y": 340.0,
+      "r": 30.0,
+      "turn": "cw",
+      "locked": false
+    },
+    {
+      "id": 2,
+      "x": 141,
+      "y": 396.20498198558556,
+      "r": 30.0,
+      "turn": "ccw",
+      "locked": false
+    },
+    {
+      "id": 3,
+      "x": 162.0,
+      "y": 340.0,
+      "r": 30.0,
+      "turn": "cw",
+      "locked": false
+    },
+    {
+      "id": 4,
+      "x": 300.0,
+      "y": 340.0,
+      "r": 30.0,
+      "turn": "cw",
+      "locked": false
+    },
+    {
+      "id": 5,
+      "x": 315.0,
+      "y": 305.0,
+      "r": 15.0,
+      "turn": "cw",
+      "locked": false
+    },
+    {
+      "id": 6,
+      "x": 140.0,
+      "y": 275.0,
+      "r": 15.0,
+      "turn": "ccw",
+      "locked": false
+    },
+    {
+      "id": 7,
+      "x": 300.0,
+      "y": 230.0,
+      "r": 30.0,
+      "turn": "cw",
+      "locked": false
+    },
+    {
+      "id": 8,
+      "x": 140.0,
+      "y": 170.0,
+      "r": 30.0,
+      "turn": "ccw",
+      "locked": false
+    },
+    {
+      "id": 9,
+      "x": 185.0,
+      "y": 315.0,
+      "r": 15.0,
+      "turn": "cw",
+      "locked": false
+    },
+    {
+      "id": 10,
+      "x": 225.0,
+      "y": 175.0,
+      "r": 25.0,
+      "turn": "ccw",
+      "locked": false
+    },
+    {
+      "id": 11,
+      "x": 315.0,
+      "y": 160.0,
+      "r": 15.0,
+      "turn": "cw",
+      "locked": false
+    },
+    {
+      "id": 12,
+      "x": 299.801315846166,
+      "y": 123.0,
+      "r": 25.0,
+      "turn": "ccw",
+      "locked": false
+    },
+    {
+      "id": 13,
+      "x": 315.0,
+      "y": 86.0,
+      "r": 15.0,
+      "turn": "cw",
+      "locked": false
+    },
+    {
+      "id": 14,
+      "x": 295.0,
+      "y": 65.0,
+      "r": 35.0,
+      "turn": "cw",
+      "locked": false
+    },
+    {
+      "id": 15,
+      "x": 50.0,
+      "y": 50.0,
+      "r": 20.0,
+      "turn": "cw",
+      "locked": false
+    }
+  ],
+  "metadata": {
+    "helper_circle_correction": {
+      "fitted_json": "tmp/2010alljapan_pre/line_arc_path_fitting_bounded/2010alljapan_pre/course_cad_model.json",
+      "match_json": "tmp/2010alljapan_pre/helper_circle_matching/bounded_corrected/helper_circle_matches.json",
+      "min_match_score": 0.4,
+      "touch_tangent_threshold_cm": 5.0,
+      "fit_approx_centers": true
+    },
+    "approved_hypothesis_refinement": {
+      "baseline_path": "tmp/2010alljapan_pre/approved_hypothesis/baseline_course.json",
+      "baseline_sha256": "bab085abf835a3624b2f6c56f98880a07867ee1020185c78efcc38fc1f0354b6",
+      "changes": [
+        "Resolve the upper R30/42 middle circle from the two printed R30 centers (120,340) and (162,340)."
+      ],
+      "approval": "User approved proceeding with these hypotheses in conversation."
+    }
+  }
+}
