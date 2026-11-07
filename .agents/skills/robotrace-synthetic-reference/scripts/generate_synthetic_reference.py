@@ -98,11 +98,8 @@ def generate(course_name: str, source_dir: Path, examples_dir: Path, reference_d
     model = load_course_model(source_path)
     solution = solve_course(model)
     errors = [issue.message for issue in solution.issues if issue.severity == "error"]
-    expected_errors_path = reference_dir / "expected_solver_errors.json"
-    expected_by_course = json.loads(expected_errors_path.read_text(encoding="utf-8")) if expected_errors_path.exists() else {}
-    expected_errors = expected_by_course.get(course_name, {}).get("errors", [])
-    if errors != expected_errors:
-        raise RuntimeError(f"{course_name}: solver errors: {errors}; expected: {expected_errors}")
+    if errors:
+        raise RuntimeError(f"{course_name}: solver errors: {errors}")
 
     example_path = examples_dir / f"{course_name}.json"
     examples_dir.mkdir(parents=True, exist_ok=True)

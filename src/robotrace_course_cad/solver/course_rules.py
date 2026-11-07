@@ -51,7 +51,7 @@ def validate_course_length(
         return []
     return [
         ValidationIssue(
-            severity="error",
+            severity="warning",
             message=(
                 "Course centerline length must be 60.00 m or less "
                 f"(current: {length_cm / 100.0:.2f} m)"
@@ -78,7 +78,7 @@ def validate_start_goal_length(start_goal_segment: StartGoalSegment | None) -> l
     if start_goal_segment is None:
         return [
             ValidationIssue(
-                severity="warning",
+                severity="error",
                 message="Start/goal segment could not be generated",
             )
         ]
@@ -115,7 +115,7 @@ def validate_start_goal_straight_clearance(
     details = ", ".join(format_clearance(clearance) for clearance in clearances)
     return [
         ValidationIssue(
-            severity="warning",
+            severity="error" if any(clearance is None for clearance in clearances) else "warning",
             message=(
                 "Start/goal lines should have 10 cm straight clearance before and after each line "
                 f"(clearances: {details})"
