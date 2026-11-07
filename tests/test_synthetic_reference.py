@@ -40,7 +40,6 @@ class SyntheticReferenceTest(unittest.TestCase):
     def test_solver_matches_all_synthetic_reference_files(self) -> None:
         example_paths = sorted(SYNTHETIC_EXAMPLES.glob("*.json"))
         self.assertGreaterEqual(len(example_paths), 6)
-        expected_errors_by_course = json.loads((SYNTHETIC_REFERENCE / "expected_solver_errors.json").read_text(encoding="utf-8"))
 
         for example_path in example_paths:
             with self.subTest(course=example_path.stem):
@@ -51,8 +50,7 @@ class SyntheticReferenceTest(unittest.TestCase):
                 solution = solve_course(model)
 
                 errors = [issue.message for issue in solution.issues if issue.severity == "error"]
-                expected_errors = expected_errors_by_course.get(example_path.stem, {}).get("errors", [])
-                self.assertEqual(errors, expected_errors)
+                self.assertFalse(errors)
                 self.assertEqual(len(solution.tangents), len(expected_tangents))
                 self.assertEqual(len(solution.arcs), len(expected_arcs))
 

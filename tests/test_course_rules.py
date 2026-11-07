@@ -21,7 +21,7 @@ class CourseRuleValidationTest(unittest.TestCase):
         issue = find_issue(issues, "Line width must be 1.9 cm")
         self.assertEqual(issue.severity, "error")
 
-    def test_course_length_must_not_exceed_60_m(self) -> None:
+    def test_course_length_over_60_m_is_warning(self) -> None:
         issues = validate_course_rules(
             CourseModel(),
             tangents=[line(Vec2(0.0, 0.0), Vec2(6001.0, 0.0))],
@@ -30,7 +30,7 @@ class CourseRuleValidationTest(unittest.TestCase):
         )
 
         issue = find_issue(issues, "Course centerline length must be 60.00 m or less")
-        self.assertEqual(issue.severity, "error")
+        self.assertEqual(issue.severity, "warning")
 
     def test_arc_radius_must_be_at_least_10_cm(self) -> None:
         model = CourseModel(circles=[HelperCircle(7, 0.0, 0.0, 9.9, Turn.CCW)])
@@ -89,6 +89,7 @@ class CourseRuleValidationTest(unittest.TestCase):
         )
 
         issue = find_issue(issues, "Start/goal lines should have 10 cm straight clearance")
+        self.assertEqual(issue.severity, "warning")
         self.assertEqual(len(issue.segments), 1)
         self.assertEqual(issue.segments[0].p_start, Vec2(-50.0, 0.0))
         self.assertEqual(issue.segments[0].p_end, Vec2(-60.0, 0.0))
@@ -108,13 +109,31 @@ class CourseRuleValidationTest(unittest.TestCase):
         )
 
         issue = find_issue(issues, "Start/goal lines should have 10 cm straight clearance")
+        self.assertEqual(issue.severity, "error")
         self.assertEqual(len(issue.segments), 2)
         self.assertEqual(issue.segments[0].p_start, Vec2(50.0, 0.0))
         self.assertEqual(issue.segments[0].p_end, Vec2(40.0, 0.0))
         self.assertEqual(issue.segments[1].p_start, Vec2(150.0, 0.0))
         self.assertEqual(issue.segments[1].p_end, Vec2(160.0, 0.0))
 
-    def test_normal_start_goal_segment_has_no_start_goal_warning(self) -> None:
+        with self.subTest("only one start/goal line is outside"):
+            issues = validate_course_rules(
+                CourseModel(),
+                tangents=[line(Vec2(0.0, 0.0), Vec2(100.0, 0.0))],
+                arcs=[],
+                start_goal_segment=StartGoalSegment(
+                    center=Vec2(40.0, 0.0),
+                    p_start=Vec2(-10.0, 0.0),
+                    p_end=Vec2(90.0, 0.0),
+                    tangent_angle_deg=0.0,
+                    length=100.0,
+                ),
+            )
+
+            issue = find_issue(issues, "Start/goal lines should have 10 cm straight clearance")
+            self.assertEqual(issue.severity, "error")
+
+    def test_start_goal_segment_availability(self) -> None:
         issues = validate_course_rules(
             CourseModel(),
             tangents=[line(Vec2(-70.0, 0.0), Vec2(70.0, 0.0))],
@@ -124,6 +143,17 @@ class CourseRuleValidationTest(unittest.TestCase):
 
         start_goal_messages = [issue.message for issue in issues if issue.message.startswith("Start/goal")]
         self.assertEqual(start_goal_messages, [])
+
+        with self.subTest("start/goal segment could not be generated"):
+            issues = validate_course_rules(
+                CourseModel(),
+                tangents=[line(Vec2(-70.0, 0.0), Vec2(70.0, 0.0))],
+                arcs=[],
+                start_goal_segment=None,
+            )
+
+            issue = find_issue(issues, "Start/goal segment could not be generated")
+            self.assertEqual(issue.severity, "error")
 
     def test_arc_length_counts_toward_60_m_limit(self) -> None:
         long_arc = ArcSegment(
@@ -145,7 +175,7 @@ class CourseRuleValidationTest(unittest.TestCase):
         )
 
         issue = find_issue(issues, "Course centerline length must be 60.00 m or less")
-        self.assertEqual(issue.severity, "error")
+        self.assertEqual(issue.severity, "warning")
 
 
 def line(start: Vec2, end: Vec2) -> TangentSegment:

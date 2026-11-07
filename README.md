@@ -196,6 +196,14 @@ QT_QPA_PLATFORM=xcb robotrace-course-cad
 5. `File > Save JSON` または `Save JSON As...` でコースデータを保存します。Ctrl+S でも保存できます。
 6. `File > Export Drawing...` または右側の `Export SVG/PDF...` から清書版を出力します。
 
+### 検査結果の読み方
+
+- **ERROR**: 幾何の破綻、またはロボトレーサの走行に支障が出る問題です。接線・円弧の生成失敗、不正な交差、最小半径・線幅違反、START/GOALの生成・配置不成立などが対象です。
+- **WARNING**: コース長超過、短い接線・円弧、START/GOAL間隔・直線余裕不足などの規定違反です。
+- **INFO**: 全周長や適正な交差などの通知です。
+
+チェックごとの分類は[仕様の重要度一覧](doc/robotrace_course_cad_spec.md#111-検査結果の重要度)を参照してください。
+
 
 <!-- 
 ## ファイル構成
