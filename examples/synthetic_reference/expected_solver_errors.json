@@ -1,0 +1,8 @@
+{
+  "2010alljapan": {
+    "errors": [
+      "Course centerline length must be 60.00 m or less (current: 64.05 m)"
+    ],
+    "reason": "The published course drawing reconstructs to about 64.05 m. Preserve its geometry and expect only this length-limit error; all other solver errors remain failures."
+  }
+}
